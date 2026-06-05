@@ -24,9 +24,9 @@ app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024
 
 # Microsoft 365 SMTP ρυθμίσεις
-SMTP_SERVER   = 'smtp.office365.com'
-SMTP_PORT     = 587
-EMAIL_FROM    = os.environ.get('EMAIL_FROM', 'report@condianhotels.gr')
+SMTP_SERVER   = 'condian.gr'
+SMTP_PORT     = 465
+EMAIL_FROM    = os.environ.get('EMAIL_FROM', 'report@condian.gr')
 EMAIL_PASSWORD = os.environ.get('EMAIL_PASSWORD', '')
 EMAIL_TO_LIST = [
     'dimitris@condianhotels.gr',
@@ -205,8 +205,8 @@ def send_report_email(record, user, recommendations, photo_path=None):
                 part.add_header('Content-Disposition', f'attachment; filename=pool_{record.record_date}.jpg')
                 msg.attach(part)
 
-        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
-        server.starttls()
+        server = smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT)
+        
         server.login(EMAIL_FROM, EMAIL_PASSWORD)
         server.sendmail(EMAIL_FROM, EMAIL_TO_LIST, msg.as_string())
         server.quit()
