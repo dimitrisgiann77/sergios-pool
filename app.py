@@ -2029,7 +2029,37 @@ def start_scheduler():
         print('[scheduler] reminder loop started')
 
 
+def seed_team():
+    """Μία φορά: δημιουργεί την πραγματική ομάδα CONDIAN."""
+    with app.app_context():
+        try:
+            if Setting.query.get('seeded_team_v1'):
+                return
+            team = [
+                ('giakoumakis',  'Giakoumakis Giannis',    'masteradmin', 'g.giakoumakis@condianhotels.gr', '+306973728931'),
+                ('giannoulakis', 'Γιαννουλάκης Δημήτρης',  'admin',       'dimitris@condianhotels.gr',      '+306936647778'),
+                ('xypakis',      'Ξυπάκης Μάνος',          'manager',     'm.xypakis@condianhotels.gr',     '+306972238222'),
+                ('smyrnakis',    'Σμυρνάκης Χριστόφορος',  'manager',     'c.smyrnakis@condianhotels.gr',   '+306992015939'),
+                ('flouris',      'Φλουρής Στέφανος',       'manager',     's.flouris@condianhotels.gr',     '+306931549656'),
+            ]
+            for un, fn, role, em, ph in team:
+                u = User.query.filter_by(username=un).first()
+                if u:
+                    u.full_name = fn; u.role = role; u.email = em; u.phone = ph
+                    u.approved = True; u.is_active = True
+                else:
+                    db.session.add(User(username=un, password=generate_password_hash('condian2026'),
+                                        full_name=fn, role=role, email=em, phone=ph,
+                                        approved=True, is_active=True, language='el'))
+            db.session.add(Setting(key='seeded_team_v1', value='1'))
+            db.session.commit()
+            print('Team CONDIAN seeded')
+        except Exception as e:
+            db.session.rollback(); print('seed_team skipped:', e)
+
+
 init_db()
+seed_team()
 start_scheduler()
 
 if __name__ == '__main__':
