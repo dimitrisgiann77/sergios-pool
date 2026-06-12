@@ -177,8 +177,7 @@ def send_fault_email(fr):
 
 # ── ROLES & PERMISSIONS ──
 ROLE_RANK = {'viewer': 0, 'staff': 1, 'manager': 2, 'admin': 3, 'masteradmin': 4}
-ROLE_LABELS = {'viewer': 'Viewer (μόνο ανάγνωση)', 'staff': 'Staff (καταγραφή)',
-               'manager': 'Manager (επόπτης)', 'admin': 'Admin', 'masteradmin': 'Master Admin'}
+ROLE_LABELS = {'staff': 'Staff (καταγραφή)', 'manager': 'Manager (επόπτης)', 'admin': 'Admin', 'masteradmin': 'Master Admin'}
 
 def role_rank(role):
     return ROLE_RANK.get(role, 0)
@@ -445,6 +444,17 @@ def get_theme():
         pass
     return t
 
+def get_ai_config():
+    cfg = {'provider': AI_PROVIDER, 'anthropic': ANTHROPIC_API_KEY, 'openai': OPENAI_API_KEY, 'model': AI_MODEL}
+    try:
+        for row in Setting.query.filter(Setting.key.like('ai_%')).all():
+            k = row.key[3:]
+            if k in cfg and row.value:
+                cfg[k] = row.value
+    except Exception:
+        pass
+    return cfg
+
 
 # ──────────────────────────────────────────────────────────────────────────
 #  WATER LOG
@@ -608,14 +618,15 @@ def send_pool_report_email(record, user):
 #  AI ASSISTANT helpers
 # ──────────────────────────────────────────────────────────────────────────
 def resolve_provider():
-    if AI_PROVIDER == 'anthropic' and ANTHROPIC_API_KEY:
+    c = get_ai_config()
+    if c['provider'] == 'anthropic' and c['anthropic']:
         return 'anthropic'
-    if AI_PROVIDER == 'openai' and OPENAI_API_KEY:
+    if c['provider'] == 'openai' and c['openai']:
         return 'openai'
-    if AI_PROVIDER == 'auto':
-        if ANTHROPIC_API_KEY:
+    if c['provider'] == 'auto':
+        if c['anthropic']:
             return 'anthropic'
-        if OPENAI_API_KEY:
+        if c['openai']:
             return 'openai'
     return None
 
@@ -624,29 +635,30 @@ def call_llm(system_prompt, messages):
     provider = resolve_provider()
     if not provider:
         return None, 'not_configured'
+    c = get_ai_config()
     try:
         if provider == 'anthropic':
-            model = AI_MODEL or 'claude-sonnet-4-6'
+            model = c['model'] or 'claude-sonnet-4-6'
             payload = {'model': model, 'max_tokens': 1024,
                        'system': system_prompt, 'messages': messages}
             req = urllib.request.Request(
                 'https://api.anthropic.com/v1/messages',
                 data=json.dumps(payload).encode('utf-8'),
                 headers={'content-type': 'application/json',
-                         'x-api-key': ANTHROPIC_API_KEY,
+                         'x-api-key': c['anthropic'],
                          'anthropic-version': '2023-06-01'})
             with urllib.request.urlopen(req, timeout=60) as r:
                 data = json.loads(r.read().decode('utf-8'))
             return data['content'][0]['text'], None
         else:  # openai
-            model = AI_MODEL or 'gpt-4o-mini'
+            model = c['model'] or 'gpt-4o-mini'
             msgs = [{'role': 'system', 'content': system_prompt}] + messages
             payload = {'model': model, 'max_tokens': 1024, 'messages': msgs}
             req = urllib.request.Request(
                 'https://api.openai.com/v1/chat/completions',
                 data=json.dumps(payload).encode('utf-8'),
                 headers={'content-type': 'application/json',
-                         'authorization': f'Bearer {OPENAI_API_KEY}'})
+                         'authorization': 'Bearer ' + c['openai']})
             with urllib.request.urlopen(req, timeout=60) as r:
                 data = json.loads(r.read().decode('utf-8'))
             return data['choices'][0]['message']['content'], None
@@ -792,7 +804,10 @@ def landing_for(user):
 def index():
     if 'user_id' in session:
         user = User.query.get(session['user_id'])
-        return redirect(landing_for(user)) if user else redirect(url_for('login'))
+        if user:
+            return render_template('shell.html', user=user, is_admin=is_admin(),
+                                   is_master=(user.role == 'masteradmin'), can_log=can_log(),
+                                   rank=role_rank(user.role), RANK=ROLE_RANK)
     return redirect(url_for('login'))
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -808,7 +823,7 @@ def login():
             session['user_role'] = user.role
             session['language']  = user.language
             log_activity('login')
-            return redirect(landing_for(user))
+            return redirect(url_for('index'))
         error = 'Λαθος username η password'
     return render_template('login.html', error=error)
 
@@ -1403,6 +1418,37 @@ def theme_admin():
         db.session.commit(); log_activity('theme_update')
         return redirect(url_for('theme_admin') + '?saved=1')
     return render_template('theme_admin.html', theme=get_theme())
+
+# ── AI σύνδεση (masteradmin) ──
+@app.route('/dashboard/ai', methods=['GET', 'POST'])
+def ai_admin():
+    u = current_user()
+    if u is None or u.role != 'masteradmin':
+        return redirect(url_for('login'))
+    def setk(k, v):
+        row = Setting.query.get('ai_' + k)
+        if row:
+            row.value = v
+        else:
+            db.session.add(Setting(key='ai_' + k, value=v))
+    if request.method == 'POST':
+        setk('provider', request.form.get('provider', 'auto'))
+        setk('model', request.form.get('model', '').strip())
+        if request.form.get('clear_keys'):
+            setk('anthropic', ''); setk('openai', '')
+        else:
+            ak = request.form.get('anthropic', '').strip()
+            if ak and not ak.startswith('*'):
+                setk('anthropic', ak)
+            ok = request.form.get('openai', '').strip()
+            if ok and not ok.startswith('*'):
+                setk('openai', ok)
+        db.session.commit(); log_activity('ai_config')
+        return redirect(url_for('ai_admin') + '?saved=1')
+    c = get_ai_config()
+    masked = {'anthropic': ('*' * 8 + c['anthropic'][-4:]) if c['anthropic'] else '',
+              'openai': ('*' * 8 + c['openai'][-4:]) if c['openai'] else ''}
+    return render_template('ai_admin.html', cfg=c, masked=masked, configured=(resolve_provider() is not None))
 
 # ── Demo data seeder (admin) — τυχαίες καταγραφές 1-31/5 ──
 @app.route('/admin/seed-demo')

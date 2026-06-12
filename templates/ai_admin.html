@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="el"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI σύνδεση — CONDIAN</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;} body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#eff9fb;color:#1a1a1a;}
+.topbar{background:#193847;color:white;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;}
+.topbar a{color:white;text-decoration:none;font-size:13px;padding:6px 12px;background:rgba(255,255,255,0.15);border-radius:6px;}
+.container{max-width:680px;margin:0 auto;padding:24px;}
+.card{background:white;border-radius:12px;padding:22px;border:1px solid #d6eef3;}
+label{display:block;font-weight:500;font-size:14px;margin:14px 0 6px;}
+input,select{width:100%;padding:11px 13px;border:1px solid #ddd;border-radius:8px;font-size:15px;}
+.hint{font-size:12px;color:#999;margin-top:4px;}
+.btn{margin-top:18px;padding:12px 22px;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;background:#193847;color:white;}
+.pill{display:inline-block;font-size:12px;padding:3px 10px;border-radius:12px;}
+.on{background:#dcfce7;color:#16a34a;} .off{background:#fee2e2;color:#dc2626;}
+.saved{background:#dcfce7;color:#16a34a;padding:10px 14px;border-radius:8px;margin-bottom:14px;font-size:13px;}
+.chk{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:13px;color:#555;}
+</style><script>try{if(new URLSearchParams(location.search).get("embed")==="1"){document.documentElement.classList.add("embed");document.addEventListener("DOMContentLoaded",function(){document.querySelectorAll("a[href^='/']").forEach(function(a){var h=a.getAttribute("href");if(h&&h.indexOf("embed=")<0&&!a.target){a.setAttribute("href",h+(h.indexOf("?")<0?"?":"&")+"embed=1");}});});}}catch(e){}</script>
+<style>.embed .app-header,.embed .topbar{display:none!important;}.embed body{background:transparent!important;}</style>
+</head><body>
+<div class="topbar"><div><strong><img src="/static/img/logo-white.svg" style="height:20px;vertical-align:middle;margin-right:8px;">AI σύνδεση (Βοηθός)</strong></div><div><a href="/dashboard"><i class="ti ti-arrow-left"></i> Dashboard</a></div></div>
+<div class="container">
+  {% if request.args.get('saved') %}<div class="saved">Αποθηκεύτηκε!</div>{% endif %}
+  <div class="card">
+    <p>Κατάσταση: {% if configured %}<span class="pill on">Ενεργός</span>{% else %}<span class="pill off">Ανενεργός</span>{% endif %}</p>
+    <form method="POST">
+      <label>Πάροχος</label>
+      <select name="provider">
+        <option value="auto" {{ 'selected' if cfg.provider=='auto' }}>Αυτόματα (όποιο key υπάρχει)</option>
+        <option value="anthropic" {{ 'selected' if cfg.provider=='anthropic' }}>Anthropic (Claude)</option>
+        <option value="openai" {{ 'selected' if cfg.provider=='openai' }}>OpenAI (ChatGPT)</option>
+      </select>
+      <label>Anthropic API key</label>
+      <input type="text" name="anthropic" value="{{ masked.anthropic }}" placeholder="sk-ant-...">
+      <div class="hint">Άφησέ το όπως είναι (με αστερίσκους) για να μην αλλάξει.</div>
+      <label>OpenAI API key</label>
+      <input type="text" name="openai" value="{{ masked.openai }}" placeholder="sk-...">
+      <label>Μοντέλο (προαιρετικό)</label>
+      <input type="text" name="model" value="{{ cfg.model }}" placeholder="π.χ. claude-sonnet-4-6 ή gpt-4o-mini">
+      <label class="chk"><input type="checkbox" name="clear_keys" value="1" style="width:auto;"> Διαγραφή αποθηκευμένων keys</label>
+      <button class="btn" type="submit"><i class="ti ti-plug"></i> Αποθήκευση & σύνδεση</button>
+    </form>
+  </div>
+</div></body></html>

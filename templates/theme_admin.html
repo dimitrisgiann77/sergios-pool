@@ -18,7 +18,9 @@ input[type=text]{padding:10px 12px;border:1px solid #ddd;border-radius:8px;font-
 #pv-body{border:1px solid #e0f0ff;border-top:none;border-radius:0 0 10px 10px;padding:16px;}
 #pv-btn{border:none;border-radius:8px;color:white;padding:10px 16px;font-weight:600;}
 #pv-tab{display:inline-block;padding:8px 14px;border-bottom:3px solid;font-weight:600;}
-</style></head><body>
+</style><script>try{if(new URLSearchParams(location.search).get("embed")==="1"){document.documentElement.classList.add("embed");document.addEventListener("DOMContentLoaded",function(){document.querySelectorAll("a[href^='/']").forEach(function(a){var h=a.getAttribute("href");if(h&&h.indexOf("embed=")<0&&!a.target){a.setAttribute("href",h+(h.indexOf("?")<0?"?":"&")+"embed=1");}});});}}catch(e){}</script>
+<style>.embed .app-header,.embed .topbar{display:none!important;}.embed body{background:transparent!important;}</style>
+</head><body>
 <div class="topbar"><div><strong><img src="/static/img/logo-white.svg" style="height:20px;vertical-align:middle;margin-right:8px;">Εμφάνιση εφαρμογής</strong></div><div><a href="/dashboard"><i class="ti ti-arrow-left"></i> Dashboard</a></div></div>
 <div class="container">
   {% if request.args.get('saved') %}<div class="saved">Αποθηκεύτηκε! (ανανέωσε τις άλλες σελίδες για να δεις την αλλαγή)</div>{% endif %}

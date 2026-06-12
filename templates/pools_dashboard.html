@@ -42,6 +42,8 @@ tr:last-child td { border-bottom:none; }
 .app-header,.app-header.pool,.topbar{background:var(--brand)!important;}
 .submit-btn,.submit-btn.pool,.btn-primary,.save-btn{background:var(--brand)!important;}
 .period-btn.active,.period-btn.pool.active{border-bottom-color:var(--accent)!important;color:var(--brand)!important;}</style>
+<script>try{if(new URLSearchParams(location.search).get("embed")==="1"){document.documentElement.classList.add("embed");document.addEventListener("DOMContentLoaded",function(){document.querySelectorAll("a[href^='/']").forEach(function(a){var h=a.getAttribute("href");if(h&&h.indexOf("embed=")<0&&!a.target){a.setAttribute("href",h+(h.indexOf("?")<0?"?":"&")+"embed=1");}});});}}catch(e){}</script>
+<style>.embed .app-header,.embed .topbar{display:none!important;}.embed body{background:transparent!important;}</style>
 </head>
 <body>
 
@@ -69,6 +71,7 @@ tr:last-child td { border-bottom:none; }
 
   <div style="margin-bottom:16px;">
     <a href="/pools/report.pdf" class="btn btn-primary" style="text-decoration:none;display:inline-flex;align-items:center;gap:6px;"><i class="ti ti-file-type-pdf"></i> Κατέβασε PDF (σήμερα)</a>
+    {% if is_admin %}<a href="/admin/seed-demo" onclick="return confirm('Δημιουργία τυχαίων demo καταγραφών για 1-31/5;')" class="btn" style="background:#94a3b8;color:white;text-decoration:none;display:inline-flex;align-items:center;gap:6px;margin-left:8px;"><i class="ti ti-database-plus"></i> Demo δεδομένα (Μάιος)</a>{% endif %}
   </div>
 
   <!-- Ιστορικό μετρήσεων -->

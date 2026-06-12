@@ -119,3 +119,9 @@ python app.py
 - **Email μέσω Microsoft Graph (Office 365)**: ορίζεις `GRAPH_TENANT_ID/CLIENT_ID/CLIENT_SECRET/SENDER` → όλα τα email φεύγουν μέσω 365 (αλλιώς SMTP). Ενοποιημένη `send_email()` + **log απεσταλμένων**.
 - **Admin: `/dashboard/email`** — δοκιμαστικό email, χειροκίνητη υπενθύμιση, log.
 - **Admin theming: `/dashboard/theme`** — κύριο χρώμα, accent, τίτλος, λογότυπο (με προεπισκόπηση). Εφαρμόζεται παντού.
+
+## v10 — Ενιαίο περιβάλλον, AI από UI, 4 ρόλοι
+
+- **Ενιαίο shell** (`/`): μόνιμη πλαϊνή μπάρα (sidebar) + περιεχόμενο που αλλάζει χωρίς αλλαγή σελίδας. Τα μενού εμφανίζονται **ανά ρόλο**.
+- **AI σύνδεση από masteradmin** (`/dashboard/ai`): βάζεις το API key (Anthropic/OpenAI) μέσα από την εφαρμογή — δεν χρειάζεται env var. Αποθηκεύεται στη βάση (masked στο UI).
+- **Ρόλοι**: masteradmin / admin / manager / staff.

@@ -51,6 +51,8 @@ tr:last-child td { border-bottom:none; }
 .app-header,.app-header.pool,.topbar{background:var(--brand)!important;}
 .submit-btn,.submit-btn.pool,.btn-primary,.save-btn{background:var(--brand)!important;}
 .period-btn.active,.period-btn.pool.active{border-bottom-color:var(--accent)!important;color:var(--brand)!important;}</style>
+<script>try{if(new URLSearchParams(location.search).get("embed")==="1"){document.documentElement.classList.add("embed");document.addEventListener("DOMContentLoaded",function(){document.querySelectorAll("a[href^='/']").forEach(function(a){var h=a.getAttribute("href");if(h&&h.indexOf("embed=")<0&&!a.target){a.setAttribute("href",h+(h.indexOf("?")<0?"?":"&")+"embed=1");}});});}}catch(e){}</script>
+<style>.embed .app-header,.embed .topbar{display:none!important;}.embed body{background:transparent!important;}</style>
 </head>
 <body>
 
@@ -64,6 +66,7 @@ tr:last-child td { border-bottom:none; }
     <a href="/pools/dashboard"><i class="ti ti-pool"></i> Πισίνες</a>
     <a href="/dashboard/email"><i class="ti ti-mail"></i> Email</a>
     <a href="/dashboard/theme"><i class="ti ti-palette"></i> Εμφάνιση</a>
+    {% if session.get('user_role')=='masteradmin' %}<a href="/dashboard/ai"><i class="ti ti-plug"></i> AI</a>{% endif %}
     <a href="/dashboard/faults"><i class="ti ti-tool"></i> Βλάβες</a>
     <a href="/notifications"><i class="ti ti-bell"></i>{% if nav_unread %} {{ nav_unread }}{% endif %}</a>
     <a href="/profile"><i class="ti ti-user-circle"></i> Προφίλ</a>
