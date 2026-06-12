@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Sergios Hotel — Water Log</title>
-<meta name="theme-color" content="#0369a1">
+<meta name="theme-color" content="#193847">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <link rel="stylesheet" href="/static/style.css">
@@ -13,7 +13,7 @@
 
 <header class="app-header">
   <div class="header-left">
-    <span class="header-icon">💧</span>
+    <img src="/static/img/logo-white.svg" alt="CONDIAN" class="header-icon" style="height:26px;width:auto;">
     <div>
       <div class="header-title">SERGIOS HOTEL — Water Log</div>
       <div class="header-sub" id="today-date"></div>
@@ -36,6 +36,7 @@
       <span>|</span>
       <a href="/set-language/en" class="{{ 'active' if session.get('language','el')=='en' }}">EN</a>
     </div>
+    <a href="/profile" class="logout-btn" title="Προφίλ"><i class="ti ti-user-circle"></i></a>
     <a href="/logout" class="logout-btn"><i class="ti ti-logout"></i></a>
   </div>
 </header>

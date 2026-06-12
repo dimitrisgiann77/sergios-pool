@@ -4,19 +4,19 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>CONDIAN HOTELS — Pool Log</title>
-<meta name="theme-color" content="#0e7490">
+<meta name="theme-color" content="#193847">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <link rel="stylesheet" href="/static/style.css">
 <style>
-.app-header.pool { background:#0e7490; }
-.period-btn.pool.active { color:#0e7490; border-bottom-color:#0e7490; }
-.submit-btn.pool { background:#0e7490; }
-.submit-btn.pool:hover { background:#0c5a70; }
+.app-header.pool { background:#193847; }
+.period-btn.pool.active { color:#193847; border-bottom-color:#BB9549; }
+.submit-btn.pool { background:#193847; }
+.submit-btn.pool:hover { background:#122a36; }
 .select-field { width:100%; padding:10px 12px; border:1.5px solid #cfe8ef; border-radius:8px; font-size:15px; background:#f8fcff; color:#1a1a1a; }
-.select-field:focus { outline:none; border-color:#0e7490; background:white; }
+.select-field:focus { outline:none; border-color:#193847; background:white; }
 .pool-pills { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
-.pool-pill { font-size:11px; padding:3px 8px; border-radius:10px; background:#e0f2fe; color:#0369a1; }
+.pool-pill { font-size:11px; padding:3px 8px; border-radius:10px; background:#e0f2fe; color:#193847; }
 .pool-pill.done { background:#dcfce7; color:#16a34a; }
 .check-row { display:flex; align-items:center; gap:8px; font-size:14px; color:#444; }
 .check-row input { width:18px; height:18px; }
@@ -26,7 +26,7 @@
 
 <header class="app-header pool">
   <div class="header-left">
-    <span class="header-icon">🏊</span>
+    <img src="/static/img/logo-white.svg" alt="CONDIAN" class="header-icon" style="height:26px;width:auto;">
     <div>
       <div class="header-title">CONDIAN HOTELS — Pool Log</div>
       <div class="header-sub" id="today-date"></div>
@@ -49,6 +49,7 @@
       <span>|</span>
       <a href="/set-language/en" class="{{ 'active' if session.get('language','el')=='en' }}">EN</a>
     </div>
+    <a href="/profile" class="logout-btn" title="Προφίλ"><i class="ti ti-user-circle"></i></a>
     <a href="/logout" class="logout-btn"><i class="ti ti-logout"></i></a>
   </div>
 </header>
@@ -63,7 +64,7 @@
   <div class="section" style="text-align:center;color:#888;">
     <i class="ti ti-pool" style="font-size:32px;"></i>
     <p style="margin-top:10px;" data-el="Δεν υπάρχουν πισίνες ακόμα." data-en="No pools yet.">Δεν υπάρχουν πισίνες ακόμα.</p>
-    {% if user.role == 'admin' %}<p style="margin-top:6px;"><a href="/pools/dashboard" style="color:#0e7490;">Πρόσθεσε ξενοδοχείο & πισίνα →</a></p>{% endif %}
+    {% if user.role == 'admin' %}<p style="margin-top:6px;"><a href="/pools/dashboard" style="color:#193847;">Πρόσθεσε ξενοδοχείο & πισίνα →</a></p>{% endif %}
   </div>
 </div>
 {% else %}

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Εγγραφή — CONDIAN HOTELS</title>
+<style>
+* { box-sizing:border-box; margin:0; padding:0; }
+body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background:linear-gradient(135deg,#193847 0%,#122a36 100%); min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px; }
+.card { background:white; border-radius:20px; padding:36px 32px; width:100%; max-width:420px; box-shadow:0 20px 60px rgba(0,0,0,0.3); }
+.logo { text-align:center; margin-bottom:22px; }
+.logo img { height:56px; }
+.hotel-name { font-size:18px; font-weight:700; color:#193847; letter-spacing:0.5px; margin-top:8px; }
+.subtitle { font-size:13px; color:#888; margin-top:4px; }
+.form-group { margin-bottom:14px; }
+label { display:block; font-size:13px; font-weight:500; color:#555; margin-bottom:5px; }
+input, select { width:100%; padding:11px 13px; border:1.5px solid #e5e5e0; border-radius:10px; font-size:15px; color:#1a1a1a; background:#fafafa; }
+input:focus, select:focus { outline:none; border-color:#193847; background:white; }
+.grid2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+button { width:100%; padding:14px; background:#193847; color:white; border:none; border-radius:10px; font-size:16px; font-weight:600; cursor:pointer; margin-top:6px; }
+button:hover { background:#122a36; }
+.msg { border-radius:8px; padding:12px 14px; font-size:13px; margin-bottom:14px; text-align:center; }
+.error { background:#FEE; color:#c0392b; border:1px solid #FCC; }
+.ok { background:#dcfce7; color:#16a34a; border:1px solid #bbf7d0; }
+.link { text-align:center; margin-top:18px; font-size:13px; }
+.link a { color:#193847; text-decoration:none; font-weight:500; }
+.hint { font-size:11px; color:#aaa; margin-top:3px; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <img src="/static/img/logo-mark.png" alt="CONDIAN">
+    <div class="hotel-name">CONDIAN HOTELS</div>
+    <div class="subtitle">Εγγραφή προσωπικού</div>
+  </div>
+  {% if not enabled %}
+    <div class="msg error">Η εγγραφή δεν είναι αυτή τη στιγμή διαθέσιμη. Επικοινώνησε με τη διοίκηση.</div>
+  {% elif done %}
+    <div class="msg ok">Η εγγραφή ολοκληρώθηκε! Ο λογαριασμός θα ενεργοποιηθεί μόλις τον εγκρίνει η διοίκηση.</div>
+  {% else %}
+    {% if error %}<div class="msg error">{{ error }}</div>{% endif %}
+    <form method="POST">
+      <div class="form-group"><label>Ονοματεπώνυμο</label><input type="text" name="full_name" required autofocus></div>
+      <div class="grid2">
+        <div class="form-group"><label>Username</label><input type="text" name="username" required></div>
+        <div class="form-group"><label>Κωδικός</label><input type="password" name="password" required></div>
+      </div>
+      <div class="grid2">
+        <div class="form-group"><label>Email</label><input type="email" name="email"></div>
+        <div class="form-group"><label>Κινητό</label><input type="text" name="phone"></div>
+      </div>
+      <div class="form-group"><label>Κωδικός εγγραφής</label><input type="text" name="reg_code" required><div class="hint">Δόθηκε από τη διοίκηση.</div></div>
+      <button type="submit">Εγγραφή</button>
+    </form>
+  {% endif %}
+  <div class="link"><a href="/">← Έχω ήδη λογαριασμό</a></div>
+</div>
+</body>
+</html>

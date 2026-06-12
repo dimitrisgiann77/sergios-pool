@@ -103,3 +103,13 @@ python app.py
 Πριν από παραγωγική χρήση συνιστάται: μεταφορά όλων των κωδικών/κλειδιών σε μεταβλητές
 περιβάλλοντος, προσθήκη προστασίας CSRF, και μετατροπή των ενεργειών διαγραφής σε POST.
 Ο AI βοηθός δεν αντικαθιστά πιστοποιημένο τεχνικό ή τη νομοθεσία.
+
+## v5 — CONDIAN branding & νέες λειτουργίες
+
+- **CONDIAN branding**: επίσημα λογότυπα (`static/img/`), παλέτα navy/gold, fonts DejaVu.
+- **PDF export**: branded ημερήσια αναφορά πισινών — κουμπί στο pool dashboard ή `/pools/report.pdf?date=YYYY-MM-DD`.
+- **Εγγραφή + προφίλ**: `/register` (με κωδικό `REG_CODE`, ο λογαριασμός μένει σε αναμονή έγκρισης admin), `/profile` για επεξεργασία στοιχείων/κωδικού.
+- **Αυτόματες υπενθυμίσεις email**: στις `REMINDER_HOUR` (Europe/Athens) στέλνεται λίστα μη-καταγεγραμμένων πισινών/νερών (κλείδωμα 1/ημέρα ανά worker).
+- **Auto-migration**: οι νέες στήλες (`user.email/phone/approved`, `pool.volume_m3`) προστίθενται μόνες τους.
+
+Νέες env: `REG_CODE`, `ENABLE_SCHEDULER`, `REMINDER_HOUR` (δες `.env.example`).

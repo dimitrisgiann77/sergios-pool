@@ -6,28 +6,28 @@
 <title>Sergios Hotel — Water Log</title>
 <style>
 * { box-sizing:border-box; margin:0; padding:0; }
-body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background:linear-gradient(135deg,#0369a1 0%,#075985 100%); min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px; }
+body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background:linear-gradient(135deg,#193847 0%,#122a36 100%); min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px; }
 .card { background:white; border-radius:20px; padding:40px 36px; width:100%; max-width:380px; box-shadow:0 20px 60px rgba(0,0,0,0.3); }
 .logo { text-align:center; margin-bottom:28px; }
 .logo-icon { font-size:48px; display:block; margin-bottom:8px; }
-.hotel-name { font-size:18px; font-weight:700; color:#0369a1; letter-spacing:0.5px; }
+.hotel-name { font-size:18px; font-weight:700; color:#193847; letter-spacing:0.5px; }
 .subtitle { font-size:13px; color:#888; margin-top:4px; }
 .form-group { margin-bottom:18px; }
 label { display:block; font-size:13px; font-weight:500; color:#555; margin-bottom:6px; }
 input { width:100%; padding:12px 14px; border:1.5px solid #e5e5e0; border-radius:10px; font-size:15px; color:#1a1a1a; background:#fafafa; transition:border-color 0.2s; }
-input:focus { outline:none; border-color:#0369a1; background:white; }
-button[type=submit] { width:100%; padding:14px; background:#0369a1; color:white; border:none; border-radius:10px; font-size:16px; font-weight:600; cursor:pointer; margin-top:8px; }
-button[type=submit]:hover { background:#075985; }
+input:focus { outline:none; border-color:#193847; background:white; }
+button[type=submit] { width:100%; padding:14px; background:#193847; color:white; border:none; border-radius:10px; font-size:16px; font-weight:600; cursor:pointer; margin-top:8px; }
+button[type=submit]:hover { background:#122a36; }
 .error { background:#FEE; color:#c0392b; border:1px solid #FCC; border-radius:8px; padding:10px 14px; font-size:13px; margin-bottom:16px; text-align:center; }
 .lang-switch { text-align:center; margin-top:20px; font-size:13px; color:#aaa; }
-.lang-switch a { color:#0369a1; text-decoration:none; font-weight:500; }
+.lang-switch a { color:#193847; text-decoration:none; font-weight:500; }
 </style>
 </head>
 <body>
 <div class="card">
   <div class="logo">
-    <span class="logo-icon">💧</span>
-    <div class="hotel-name">SERGIOS HOTEL</div>
+    <img src="/static/img/logo-mark.png" alt="CONDIAN" style="height:60px;margin-bottom:4px;">
+    <div class="hotel-name">CONDIAN HOTELS</div>
     <div class="subtitle">Water Log — Νερά Χρήσης</div>
   </div>
   {% if error %}<div class="error">{{ error }}</div>{% endif %}
@@ -42,6 +42,7 @@ button[type=submit]:hover { background:#075985; }
     </div>
     <button type="submit">Εισοδος →</button>
   </form>
+  <div class="link" style="text-align:center;margin-top:16px;font-size:13px;"><a href="/register" style="color:#193847;font-weight:600;text-decoration:none;">Εγγραφή νέου χρήστη →</a></div>
   <div class="lang-switch">
     <a href="/set-language/el">ΕΛ</a> &nbsp;|&nbsp; <a href="/set-language/en">EN</a>
   </div>

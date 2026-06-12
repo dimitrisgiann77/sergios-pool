@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="{{ session.get('language','el') }}">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Το προφίλ μου — CONDIAN</title>
+<meta name="theme-color" content="#193847">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<link rel="stylesheet" href="/static/style.css">
+<style>.app-header{background:#193847;} .save-btn{width:100%;padding:14px;background:#193847;color:white;border:none;border-radius:12px;font-size:16px;font-weight:600;cursor:pointer;margin-top:8px;}</style>
+</head>
+<body>
+<header class="app-header">
+  <div class="header-left">
+    <a href="{{ '/pools' if user.role!='admin' else '/dashboard' }}" style="color:white;text-decoration:none;margin-right:6px;"><i class="ti ti-arrow-left" style="font-size:20px;"></i></a>
+    <img src="/static/img/logo-white.svg" class="header-icon" style="height:24px;">
+    <div><div class="header-title">Το προφίλ μου</div><div class="header-sub">{{ user.full_name }}</div></div>
+  </div>
+  <div class="header-right"><a href="/logout" class="logout-btn"><i class="ti ti-logout"></i></a></div>
+</header>
+<div class="app-content">
+  {% if saved %}<div class="submit-msg success" style="display:block;">Αποθηκεύτηκε.</div>{% endif %}
+  <form method="POST">
+    <div class="section">
+      <div class="sec-title"><i class="ti ti-user"></i> Στοιχεία επικοινωνίας</div>
+      <div class="field"><label>Email</label><input type="email" name="email" value="{{ user.email or '' }}"></div>
+      <div class="field"><label>Κινητό</label><input type="text" name="phone" value="{{ user.phone or '' }}"></div>
+      <div class="field"><label>Γλώσσα</label>
+        <select name="language" style="width:100%;padding:10px 12px;border:1.5px solid #e0f0ff;border-radius:8px;font-size:15px;">
+          <option value="el" {{ 'selected' if user.language=='el' }}>Ελληνικά</option>
+          <option value="en" {{ 'selected' if user.language=='en' }}>English</option>
+        </select>
+      </div>
+    </div>
+    <div class="section">
+      <div class="sec-title"><i class="ti ti-lock"></i> Αλλαγή κωδικού (προαιρετικά)</div>
+      <div class="field"><label>Νέος κωδικός</label><input type="password" name="password" placeholder="Άφησέ το κενό για να μην αλλάξει"></div>
+    </div>
+    <button type="submit" class="save-btn"><i class="ti ti-device-floppy"></i> Αποθήκευση</button>
+  </form>
+</div>
+</body>
+</html>

@@ -4,28 +4,28 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Βοηθός Πισίνας — CONDIAN HOTELS</title>
-<meta name="theme-color" content="#0e7490">
+<meta name="theme-color" content="#193847">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <link rel="stylesheet" href="/static/style.css">
 <style>
 body { display:flex; flex-direction:column; height:100vh; max-width:560px; }
-.app-header.pool { background:#0e7490; flex-shrink:0; }
+.app-header.pool { background:#193847; flex-shrink:0; }
 .asst-tools { background:white; border-bottom:1px solid #e0f0ff; padding:10px 14px; flex-shrink:0; }
 .asst-tools .row { display:flex; gap:8px; }
 .select-field { flex:1; padding:8px 10px; border:1.5px solid #cfe8ef; border-radius:8px; font-size:14px; background:#f8fcff; color:#1a1a1a; }
 .notice { background:#fef3c7; color:#92400e; border:1px solid #fde68a; border-radius:8px; padding:8px 12px; font-size:12.5px; margin-top:8px; display:flex; gap:6px; align-items:flex-start; }
 .chat { flex:1; overflow-y:auto; padding:14px; background:#f0f7ff; }
 .msg { max-width:85%; padding:10px 13px; border-radius:14px; margin-bottom:10px; font-size:14px; line-height:1.45; white-space:pre-wrap; word-wrap:break-word; }
-.msg.user { background:#0e7490; color:white; margin-left:auto; border-bottom-right-radius:4px; }
+.msg.user { background:#193847; color:white; margin-left:auto; border-bottom-right-radius:4px; }
 .msg.bot { background:white; color:#1a1a1a; border:1px solid #e0f0ff; border-bottom-left-radius:4px; }
 .msg.bot.err { background:#fee2e2; color:#b91c1c; border-color:#fecaca; }
-.typing { font-size:13px; color:#0e7490; padding:4px 6px; }
+.typing { font-size:13px; color:#193847; padding:4px 6px; }
 .chips { display:flex; flex-wrap:wrap; gap:6px; padding:0 14px 8px; background:#f0f7ff; }
-.chip { font-size:12px; padding:6px 10px; border:1px solid #cfe8ef; background:white; border-radius:14px; cursor:pointer; color:#0e7490; }
+.chip { font-size:12px; padding:6px 10px; border:1px solid #cfe8ef; background:white; border-radius:14px; cursor:pointer; color:#193847; }
 .chip:hover { background:#e0f2fe; }
 .composer { flex-shrink:0; display:flex; gap:8px; padding:10px 12px; background:white; border-top:1px solid #e0f0ff; }
 .composer textarea { flex:1; resize:none; border:1.5px solid #cfe8ef; border-radius:10px; padding:10px 12px; font-size:15px; background:#f8fcff; max-height:120px; }
-.composer button { background:#0e7490; color:white; border:none; border-radius:10px; width:48px; font-size:20px; cursor:pointer; }
+.composer button { background:#193847; color:white; border:none; border-radius:10px; width:48px; font-size:20px; cursor:pointer; }
 .composer button:disabled { background:#9bbcc6; }
 .welcome { text-align:center; color:#7a98a3; font-size:13px; margin-top:30px; padding:0 20px; }
 </style>
@@ -35,13 +35,14 @@ body { display:flex; flex-direction:column; height:100vh; max-width:560px; }
 <header class="app-header pool">
   <div class="header-left">
     <a href="/pools" style="color:white;text-decoration:none;margin-right:6px;"><i class="ti ti-arrow-left" style="font-size:20px;"></i></a>
-    <span class="header-icon">🤖</span>
+    <img src="/static/img/logo-white.svg" alt="CONDIAN" class="header-icon" style="height:26px;width:auto;">
     <div>
       <div class="header-title">Βοηθός Πισίνας</div>
       <div class="header-sub">CONDIAN HOTELS</div>
     </div>
   </div>
   <div class="header-right">
+    <a href="/profile" class="logout-btn" title="Προφίλ"><i class="ti ti-user-circle"></i></a>
     <a href="/logout" class="logout-btn"><i class="ti ti-logout"></i></a>
   </div>
 </header>

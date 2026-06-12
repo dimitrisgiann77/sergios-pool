@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Επεξεργασία — Water Log</title>
-<meta name="theme-color" content="#0369a1">
+<meta name="theme-color" content="#193847">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <link rel="stylesheet" href="/static/style.css">
 <style>
@@ -16,7 +16,7 @@
 <header class="app-header">
   <div class="header-left">
     <a href="{{ '/dashboard' if user.role == 'admin' else '/app' }}" style="color:white; text-decoration:none; margin-right:6px;"><i class="ti ti-arrow-left" style="font-size:20px;"></i></a>
-    <span class="header-icon">💧</span>
+    <img src="/static/img/logo-white.svg" alt="CONDIAN" class="header-icon" style="height:26px;width:auto;">
     <div>
       <div class="header-title">Επεξεργασία καταγραφής</div>
       <div class="header-sub">{{ record.record_date.strftime('%d/%m/%Y') }} — {{ 'Πρωί' if record.period == 'morning' else 'Απόγευμα' }}</div>

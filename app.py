@@ -8,12 +8,12 @@ Modules:
   - AI Pool Assistant (Βοηθός Πισίνας) — provider-agnostic (Anthropic/OpenAI)
 """
 
-from flask import Flask, render_template, request, redirect, url_for, session, jsonify
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify, Response
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy import text
-from datetime import datetime, date
-import os, smtplib, threading, json, urllib.request, urllib.error
+from datetime import datetime, date, timedelta
+import os, smtplib, threading, json, time, urllib.request, urllib.error
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
@@ -34,6 +34,11 @@ EMAIL_FROM     = os.environ.get('EMAIL_FROM', 'report@condian.gr')
 EMAIL_PASSWORD = os.environ.get('EMAIL_PASSWORD', '')
 EMAIL_TO_LIST  = ['dimitris@condianhotels.gr', 'm.xypakis@condianhotels.gr', 'g.giakoumakis@condianhotels.gr']
 HOTEL_NAME     = 'Sergios Hotel'
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+REG_CODE = os.environ.get('REG_CODE', 'condian2026')          # κωδικός εγγραφής προσωπικού
+ENABLE_SCHEDULER = os.environ.get('ENABLE_SCHEDULER', 'true').lower() in ('1','true','yes','on')
+REMINDER_HOUR = int(os.environ.get('REMINDER_HOUR', '18'))    # ώρα υπενθύμισης (Europe/Athens)
 
 # ── AI Assistant config (provider-agnostic) ──
 AI_PROVIDER       = os.environ.get('AI_PROVIDER', 'auto')   # auto | anthropic | openai
@@ -99,6 +104,9 @@ class User(db.Model):
     full_name  = db.Column(db.String(100), nullable=False)
     role       = db.Column(db.String(20), default='staff')
     language   = db.Column(db.String(5), default='el')
+    email      = db.Column(db.String(120))
+    phone      = db.Column(db.String(40))
+    approved   = db.Column(db.Boolean, default=True)
     is_active  = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -170,6 +178,11 @@ class PoolRecord(db.Model):
     pool         = db.relationship('Pool')
     user         = db.relationship('User', foreign_keys=[user_id])
     updated_user = db.relationship('User', foreign_keys=[updated_by])
+
+
+class ReminderSent(db.Model):
+    day = db.Column(db.String(10), primary_key=True)        # 'YYYY-MM-DD' lock ανά ημέρα
+    sent_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
 def flt(data, key):
@@ -450,6 +463,57 @@ def build_pool_context(pool):
     return '\n'.join(lines)
 
 
+def build_pool_report_pdf(rep_date, records):
+    """Branded PDF αναφορά πισινών για μια ημέρα (fpdf2 + DejaVuSans)."""
+    from fpdf import FPDF
+    NAVY=(25,56,71); GOLD=(187,149,73); GREY=(120,120,120); RED=(200,30,30); GREEN=(20,140,60)
+    pdf = FPDF(orientation='P', unit='mm', format='A4')
+    pdf.set_auto_page_break(True, margin=15)
+    pdf.add_font('dv', '', os.path.join(BASE_DIR, 'assets', 'fonts', 'DejaVuSans.ttf'))
+    pdf.add_font('dv', 'B', os.path.join(BASE_DIR, 'assets', 'fonts', 'DejaVuSans-Bold.ttf'))
+    pdf.add_page()
+    try:
+        pdf.image(os.path.join(BASE_DIR, 'static', 'img', 'logo.png'), x=12, y=10, h=14)
+    except Exception:
+        pass
+    pdf.set_xy(32, 11); pdf.set_font('dv', 'B', 16); pdf.set_text_color(*NAVY)
+    pdf.cell(0, 8, 'CONDIAN Hotels — Αναφορά Πισινών', ln=1)
+    pdf.set_x(32); pdf.set_font('dv', '', 11); pdf.set_text_color(*GREY)
+    pdf.cell(0, 6, 'Ημερομηνία: ' + rep_date.strftime('%d/%m/%Y'), ln=1)
+    pdf.ln(8)
+    if not records:
+        pdf.set_font('dv', '', 12); pdf.set_text_color(*GREY)
+        pdf.cell(0, 8, 'Δεν υπάρχουν καταγραφές για αυτή την ημέρα.', ln=1)
+    cur = None
+    for r in records:
+        pname = (r.pool.hotel.name + ' — ' + r.pool.name) if (r.pool and r.pool.hotel) else (r.pool.name if r.pool else '—')
+        if pname != cur:
+            cur = pname
+            pdf.ln(2); pdf.set_font('dv', 'B', 12); pdf.set_text_color(*NAVY); pdf.set_fill_color(240,243,245)
+            pdf.cell(0, 8, '  ' + pname, ln=1, fill=True)
+        per = 'Πρωί' if r.period == 'morning' else 'Απόγευμα'
+        pdf.set_font('dv', 'B', 10); pdf.set_text_color(*GOLD)
+        pdf.cell(0, 6, per + ' — ' + (r.user.full_name if r.user else ''), ln=1)
+        def line(lbl, val, key, unit=''):
+            if val is None: return
+            mn, mx = POOL_LIMITS.get(key, (None, None))
+            ok = (mn is None or val >= mn) and (mx is None or val <= mx)
+            pdf.set_font('dv', '', 10); pdf.set_text_color(40,40,40); pdf.cell(62, 5, '   ' + lbl)
+            pdf.set_text_color(*(GREEN if ok else RED))
+            pdf.cell(0, 5, str(val) + unit + ('' if ok else '  (εκτός ορίων)'), ln=1)
+        line('Ελεύθερο χλώριο', r.free_chlorine, 'free_chlorine', ' mg/L')
+        line('Συνδεδεμένο χλώριο', r.combined_chlorine, 'combined_chlorine', ' mg/L')
+        line('pH', r.ph, 'ph')
+        line('Θερμοκρασία', r.temp, 'temp', ' C')
+        line('Θολότητα', r.turbidity, 'turbidity', ' NTU')
+        line('Κυανουρικό', r.cyanuric_acid, 'cyanuric_acid', ' mg/L')
+        line('Αλκαλικότητα', r.total_alkalinity, 'total_alkalinity', ' mg/L')
+        line('ORP', r.orp, 'orp', ' mV')
+        if r.notes:
+            pdf.set_font('dv', '', 9); pdf.set_text_color(*GREY); pdf.multi_cell(0, 5, '   Σημ: ' + r.notes)
+    return bytes(pdf.output())
+
+
 # ──────────────────────────────────────────────────────────────────────────
 #  AUTH
 # ──────────────────────────────────────────────────────────────────────────
@@ -469,7 +533,7 @@ def login():
         username = request.form.get('username', '').strip()
         password = request.form.get('password', '')
         user = User.query.filter_by(username=username, is_active=True).first()
-        if user and check_password_hash(user.password, password):
+        if user and user.approved and check_password_hash(user.password, password):
             session['user_id']   = user.id
             session['user_name'] = user.full_name
             session['user_role'] = user.role
@@ -482,6 +546,50 @@ def login():
 def logout():
     session.clear()
     return redirect(url_for('login'))
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if not REG_CODE:
+        return render_template('register.html', enabled=False, error=None, done=False)
+    error = None
+    if request.method == 'POST':
+        fm = request.form
+        if fm.get('reg_code', '').strip() != REG_CODE:
+            error = 'Λάθος κωδικός εγγραφής'
+        elif not (fm.get('username') and fm.get('password') and fm.get('full_name')):
+            error = 'Συμπλήρωσε ονοματεπώνυμο, username και κωδικό'
+        elif User.query.filter_by(username=fm['username'].strip()).first():
+            error = 'Το username υπάρχει ήδη'
+        else:
+            db.session.add(User(
+                username=fm['username'].strip(),
+                password=generate_password_hash(fm['password']),
+                full_name=fm['full_name'].strip(),
+                email=fm.get('email', '').strip(),
+                phone=fm.get('phone', '').strip(),
+                role='staff', language=fm.get('language', 'el'),
+                approved=False, is_active=True))
+            db.session.commit()
+            return render_template('register.html', enabled=True, error=None, done=True)
+    return render_template('register.html', enabled=True, error=error, done=False)
+
+@app.route('/profile', methods=['GET', 'POST'])
+def profile():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    user = User.query.get(session['user_id'])
+    saved = False
+    if request.method == 'POST':
+        fm = request.form
+        user.email = fm.get('email', '').strip()
+        user.phone = fm.get('phone', '').strip()
+        if fm.get('language') in ('el', 'en'):
+            user.language = fm['language']; session['language'] = fm['language']
+        if fm.get('password'):
+            user.password = generate_password_hash(fm['password'])
+        db.session.commit()
+        saved = True
+    return render_template('profile.html', user=user, saved=saved)
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -654,6 +762,22 @@ def api_pool_record(record_id):
         'orp': r.orp, 'backwash_done': r.backwash_done, 'notes': r.notes or ''
     })
 
+@app.route('/pools/report.pdf')
+def pool_report_pdf():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    ds = request.args.get('date')
+    try:
+        rep_date = datetime.strptime(ds, '%Y-%m-%d').date() if ds else date.today()
+    except ValueError:
+        rep_date = date.today()
+    records = (PoolRecord.query.filter_by(record_date=rep_date)
+               .order_by(PoolRecord.pool_id, PoolRecord.period).all())
+    pdf_bytes = build_pool_report_pdf(rep_date, records)
+    fname = 'pool-report-' + rep_date.strftime('%Y-%m-%d') + '.pdf'
+    return Response(pdf_bytes, mimetype='application/pdf',
+                    headers={'Content-Disposition': 'attachment; filename=' + fname})
+
 
 # ──────────────────────────────────────────────────────────────────────────
 #  AI ASSISTANT ROUTES
@@ -702,10 +826,11 @@ def dashboard():
     if 'user_id' not in session or session.get('user_role') != 'admin':
         return redirect(url_for('login'))
     records = WaterRecord.query.order_by(WaterRecord.record_date.desc(), WaterRecord.period).limit(60).all()
-    users   = User.query.filter_by(is_active=True).all()
+    users   = User.query.filter_by(is_active=True, approved=True).all()
+    pending = User.query.filter_by(is_active=True, approved=False).all()
     today_m = WaterRecord.query.filter_by(record_date=date.today(), period='morning').first()
     today_a = WaterRecord.query.filter_by(record_date=date.today(), period='afternoon').first()
-    return render_template('dashboard.html', records=records, users=users,
+    return render_template('dashboard.html', records=records, users=users, pending=pending,
                            today_morning=today_m, today_afternoon=today_a)
 
 @app.route('/pools/dashboard')
@@ -745,6 +870,16 @@ def delete_user(user_id):
         user.is_active = False
         db.session.commit()
     return redirect(url_for('dashboard'))
+
+@app.route('/dashboard/approve-user/<int:user_id>', methods=['POST'])
+def approve_user(user_id):
+    if session.get('user_role') != 'admin':
+        return redirect(url_for('login'))
+    u = User.query.get(user_id)
+    if u:
+        u.approved = True; u.is_active = True
+        db.session.commit()
+    return redirect(url_for('dashboard') + '?success=user_approved')
 
 @app.route('/dashboard/add-hotel', methods=['POST'])
 def add_hotel():
@@ -830,16 +965,23 @@ def api_pool_history(pool_id):
 # ──────────────────────────────────────────────────────────────────────────
 #  INIT  (τρέχει και κάτω από gunicorn)
 # ──────────────────────────────────────────────────────────────────────────
+def _add_col(table, col, ddl):
+    insp = db.inspect(db.engine)
+    if table in insp.get_table_names():
+        cols = [c['name'] for c in insp.get_columns(table)]
+        if col not in cols:
+            db.session.execute(text(f'ALTER TABLE "{table}" ADD COLUMN {ddl}'))
+            db.session.commit()
+            print(f'Migration: {table}.{col} added')
+
 def ensure_columns():
     """Ελαφρύ migration: πρόσθεσε νέες στήλες σε ήδη υπάρχουσα βάση."""
     try:
-        insp = db.inspect(db.engine)
-        if 'pool' in insp.get_table_names():
-            cols = [c['name'] for c in insp.get_columns('pool')]
-            if 'volume_m3' not in cols:
-                db.session.execute(text('ALTER TABLE pool ADD COLUMN volume_m3 FLOAT'))
-                db.session.commit()
-                print('Migration: pool.volume_m3 added')
+        truth = 'true' if db.engine.dialect.name == 'postgresql' else '1'
+        _add_col('pool', 'volume_m3', 'volume_m3 FLOAT')
+        _add_col('user', 'email', 'email VARCHAR(120)')
+        _add_col('user', 'phone', 'phone VARCHAR(40)')
+        _add_col('user', 'approved', f'approved BOOLEAN DEFAULT {truth}')
     except Exception as e:
         db.session.rollback()
         print(f'ensure_columns skipped: {e}')
@@ -868,7 +1010,79 @@ def init_db():
             print(f'init_db seed skipped: {e}')
 
 
+def _athens_now():
+    try:
+        from zoneinfo import ZoneInfo
+        return datetime.now(ZoneInfo('Europe/Athens'))
+    except Exception:
+        return datetime.utcnow() + timedelta(hours=3)
+
+def missing_today():
+    today = date.today()
+    miss = []
+    for p in Pool.query.filter_by(is_active=True).all():
+        recs = {r.period for r in PoolRecord.query.filter_by(pool_id=p.id, record_date=today).all()}
+        gaps = [per for per in ('morning', 'afternoon') if per not in recs]
+        if gaps:
+            hotel = p.hotel.name if p.hotel else ''
+            miss.append(f"{hotel} — {p.name}: " + ', '.join('Πρωί' if g == 'morning' else 'Απόγευμα' for g in gaps))
+    for per, label in (('morning', 'Πρωί'), ('afternoon', 'Απόγευμα')):
+        if not WaterRecord.query.filter_by(record_date=today, period=per).first():
+            miss.append('Νερά Χρήσης (Sergios): ' + label)
+    return miss
+
+def send_reminder_email(miss):
+    if not EMAIL_PASSWORD or not miss:
+        return False
+    recips = list(EMAIL_TO_LIST)
+    for u in User.query.filter_by(is_active=True, approved=True).all():
+        if u.email and u.email not in recips:
+            recips.append(u.email)
+    items = ''.join(f'<li>{m}</li>' for m in miss)
+    html = f'<div style="font-family:Arial,sans-serif"><h3 style="color:#193847">Εκκρεμείς καταγραφές σήμερα</h3><ul>{items}</ul><p style="color:#888;font-size:12px">CONDIAN Hotels — αυτόματη υπενθύμιση</p></div>'
+    try:
+        msg = MIMEMultipart(); msg['From'] = EMAIL_FROM; msg['To'] = ', '.join(recips)
+        msg['Subject'] = 'Υπενθυμιση καταγραφων - ' + date.today().strftime('%d/%m/%Y')
+        msg.attach(MIMEText(html, 'html', 'utf-8'))
+        sv = smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT); sv.login(EMAIL_FROM, EMAIL_PASSWORD)
+        sv.sendmail(EMAIL_FROM, recips, msg.as_string()); sv.quit()
+        return True
+    except Exception as e:
+        print('reminder email error:', e); return False
+
+def reminder_tick():
+    with app.app_context():
+        now = _athens_now()
+        if now.hour != REMINDER_HOUR:
+            return
+        today = now.strftime('%Y-%m-%d')
+        if ReminderSent.query.get(today):
+            return
+        try:
+            db.session.add(ReminderSent(day=today)); db.session.commit()
+        except Exception:
+            db.session.rollback(); return   # άλλος worker το ανέλαβε
+        miss = missing_today()
+        if miss:
+            send_reminder_email(miss)
+            print(f'[reminder] {today}: {len(miss)} εκκρεμή')
+
+def reminder_loop():
+    while True:
+        try:
+            reminder_tick()
+        except Exception as e:
+            print('[reminder] loop error:', e)
+        time.sleep(1800)   # κάθε 30 λεπτά
+
+def start_scheduler():
+    if ENABLE_SCHEDULER:
+        threading.Thread(target=reminder_loop, daemon=True).start()
+        print('[scheduler] reminder loop started')
+
+
 init_db()
+start_scheduler()
 
 if __name__ == '__main__':
     app.run(debug=False, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
