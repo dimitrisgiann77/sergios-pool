@@ -1638,6 +1638,50 @@ def areas_dashboard():
     return render_template('areas_dashboard.html', areas=areas, rows=rows,
                            is_admin=is_admin(), templates=MonitorTemplate.query.order_by(MonitorTemplate.sort).all())
 
+@app.route('/overview')
+def overview():
+    if not is_admin():
+        return redirect(url_for('login'))
+    today = date.today()
+    hotels = Hotel.query.filter_by(is_active=True).order_by(Hotel.name).all()
+    cov = []
+    total_exp = total_done = 0
+    for h in hotels:
+        exp = done = 0
+        for p in [p for p in h.pools if p.is_active]:
+            exp += 2
+            done += min(2, PoolRecord.query.filter_by(pool_id=p.id, record_date=today).count())
+        for a in Area.query.filter_by(hotel_id=h.id, is_active=True).all():
+            tpl = MonitorTemplate.query.get(a.template_key)
+            n = len(periods_for(tpl.frequency)) if tpl else 1
+            exp += n
+            done += min(n, Reading.query.filter_by(area_id=a.id, record_date=today).count())
+        pct = int(100 * done / exp) if exp else 100
+        cov.append({'hotel': h.name, 'exp': exp, 'done': done, 'pct': pct})
+        total_exp += exp; total_done += done
+    rec_dates = [today, today - timedelta(days=1)]
+    alerts = []
+    for r in PoolRecord.query.filter(PoolRecord.record_date.in_(rec_dates)).order_by(PoolRecord.recorded_at.desc()).limit(80).all():
+        for a in compute_pool_actions(r):
+            alerts.append({'where': (r.pool.hotel.name + ' / ' + r.pool.name) if (r.pool and r.pool.hotel) else (r.pool.name if r.pool else '—'),
+                           'label': a['label'], 'urgent': a['urgent'], 'date': r.record_date})
+    for r in Reading.query.filter(Reading.record_date.in_(rec_dates)).order_by(Reading.recorded_at.desc()).limit(80).all():
+        for a in area_actions(r):
+            alerts.append({'where': (r.area.hotel.name + ' / ' + r.area.name) if (r.area and r.area.hotel) else '—',
+                           'label': a['label'], 'urgent': False, 'date': r.record_date})
+    alerts = sorted(alerts, key=lambda x: (not x['urgent'], x['date']), reverse=False)[:15]
+    faults = FaultReport.query.filter_by(status='open').order_by(FaultReport.id.desc()).limit(10).all()
+    pending = User.query.filter_by(is_active=True, approved=False).all()
+    kpis = {'hotels': len(hotels),
+            'pools': Pool.query.filter_by(is_active=True).count(),
+            'areas': Area.query.filter_by(is_active=True).count(),
+            'users': User.query.filter_by(is_active=True, approved=True).count(),
+            'compliance': int(100 * total_done / total_exp) if total_exp else 100,
+            'open_faults': FaultReport.query.filter_by(status='open').count(),
+            'pending': len(pending), 'alerts': len(alerts)}
+    return render_template('overview.html', cov=cov, alerts=alerts, faults=faults,
+                           pending=pending, kpis=kpis, areas_labels=AREA_LABELS)
+
 # admin: areas management
 @app.route('/dashboard/areas', methods=['GET', 'POST'])
 def areas_admin():

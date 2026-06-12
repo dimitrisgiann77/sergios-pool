@@ -1,0 +1,61 @@
+<!DOCTYPE html><html lang="el"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Σύνοψη — CONDIAN</title><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#eff5f8;color:#1a2b33;}
+.topbar{background:#193847;color:#fff;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;}
+.topbar a{color:#fff;text-decoration:none;font-size:13px;padding:6px 12px;background:rgba(255,255,255,.15);border-radius:6px;margin-left:6px;}
+.wrap{max-width:1200px;margin:0 auto;padding:20px;}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:18px;}
+.kpi{background:#fff;border:1px solid #dbe7ee;border-radius:12px;padding:14px 16px;}
+.kpi .v{font-size:26px;font-weight:700;line-height:1;}.kpi .l{font-size:12px;color:#7a8b94;margin-top:6px;}
+.kpi.good .v{color:#16a34a;}.kpi.warn .v{color:#d97706;}.kpi.bad .v{color:#dc2626;}.kpi .v{color:#193847;}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}@media(max-width:780px){.grid{grid-template-columns:1fr;}}
+.card{background:#fff;border:1px solid #dbe7ee;border-radius:12px;padding:16px 18px;margin-bottom:16px;}
+.card h2{font-size:14px;font-weight:600;margin-bottom:14px;display:flex;align-items:center;gap:8px;color:#27323a;}
+.cov{margin-bottom:12px;}.cov .top{display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px;}
+.bar{height:9px;border-radius:6px;background:#edf1f4;overflow:hidden;}.bar i{display:block;height:100%;border-radius:6px;}
+.li{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid #f3f6f8;font-size:13px;}
+.li:last-child{border-bottom:none;}.tag{font-size:11px;padding:2px 8px;border-radius:5px;background:#eef2ff;color:#193847;white-space:nowrap;}
+.tag.bad{background:#fee2e2;color:#dc2626;font-weight:600;}.muted{color:#9aa7ad;}.empty{color:#9aa7ad;font-size:13px;padding:8px 0;}
+.btn{display:inline-block;margin-top:10px;font-size:12px;color:#193847;text-decoration:none;font-weight:600;}
+</style><style>:root{--brand:{{ theme.primary }};--accent:{{ theme.accent }};}.topbar{background:var(--brand)!important;}</style>
+<script>try{if(new URLSearchParams(location.search).get("embed")==="1"){document.documentElement.classList.add("embed");document.addEventListener("DOMContentLoaded",function(){document.querySelectorAll("a[href^='/']").forEach(function(a){var h=a.getAttribute("href");if(h&&h.indexOf("embed=")<0&&!a.target){a.setAttribute("href",h+(h.indexOf("?")<0?"?":"&")+"embed=1");}});});}}catch(e){}</script>
+<style>.embed .topbar{display:none!important;}.embed body{background:transparent!important;}</style>
+</head><body>
+<div class="topbar"><div><strong><img src="/static/img/logo-white.svg" style="height:20px;vertical-align:middle;margin-right:8px;">Σύνοψη ημέρας</strong></div>
+<div><a href="/areas/dashboard"><i class="ti ti-clipboard-list"></i> Τομείς</a><a href="/pools/dashboard"><i class="ti ti-pool"></i> Πισίνες</a></div></div>
+<div class="wrap">
+  <div class="kpis">
+    <div class="kpi {{ 'good' if kpis.compliance>=80 else 'warn' if kpis.compliance>=50 else 'bad' }}"><div class="v">{{ kpis.compliance }}%</div><div class="l">Συμμόρφωση σήμερα</div></div>
+    <div class="kpi {{ 'bad' if kpis.alerts else 'good' }}"><div class="v">{{ kpis.alerts }}</div><div class="l">Εκτός ορίων</div></div>
+    <div class="kpi {{ 'bad' if kpis.open_faults else 'good' }}"><div class="v">{{ kpis.open_faults }}</div><div class="l">Ανοιχτές βλάβες</div></div>
+    <div class="kpi {{ 'warn' if kpis.pending else '' }}"><div class="v">{{ kpis.pending }}</div><div class="l">Εκκρεμείς εγγραφές</div></div>
+    <div class="kpi"><div class="v">{{ kpis.hotels }}</div><div class="l">Ξενοδοχεία</div></div>
+    <div class="kpi"><div class="v">{{ kpis.pools + kpis.areas }}</div><div class="l">Σημεία ελέγχου</div></div>
+    <div class="kpi"><div class="v">{{ kpis.users }}</div><div class="l">Χρήστες</div></div>
+  </div>
+  <div class="card"><h2><i class="ti ti-checkup-list"></i> Κάλυψη σήμερα ανά ξενοδοχείο</h2>
+    {% for c in cov %}
+    <div class="cov"><div class="top"><span>{{ c.hotel }}</span><span class="muted">{{ c.done }}/{{ c.exp }} · {{ c.pct }}%</span></div>
+      <div class="bar"><i style="width:{{ c.pct }}%;background:{{ '#16a34a' if c.pct>=80 else '#d97706' if c.pct>=50 else '#dc2626' }};"></i></div></div>
+    {% else %}<div class="empty">Δεν υπάρχουν ξενοδοχεία.</div>{% endfor %}
+  </div>
+  <div class="grid">
+    <div class="card"><h2><i class="ti ti-alert-triangle"></i> Εκτός ορίων (πρόσφατα)</h2>
+      {% for a in alerts %}<div class="li"><span>{{ a.where }} — {{ a.label }}</span><span class="tag bad">{{ 'ΕΠΕΙΓΟΝ' if a.urgent else a.date.strftime('%d/%m') }}</span></div>
+      {% else %}<div class="empty">Όλα εντός ορίων 👍</div>{% endfor %}
+    </div>
+    <div>
+      <div class="card"><h2><i class="ti ti-tool"></i> Ανοιχτές βλάβες</h2>
+        {% for f in faults %}<div class="li"><span>{{ areas_labels.get(f.area, f.area) }}{% if f.pool %} — {{ f.pool.name }}{% endif %}</span><span class="muted">{{ f.created_at.strftime('%d/%m') }}</span></div>
+        {% else %}<div class="empty">Καμία ανοιχτή βλάβη.</div>{% endfor %}
+        <a class="btn" href="/dashboard/faults">Διαχείριση βλαβών →</a>
+      </div>
+      <div class="card"><h2><i class="ti ti-user-plus"></i> Εκκρεμείς εγγραφές</h2>
+        {% for u in pending %}<div class="li"><span>{{ u.full_name }} <span class="muted">({{ u.username }})</span></span><span class="muted">{{ u.email or '' }}</span></div>
+        {% else %}<div class="empty">Καμία εκκρεμότητα.</div>{% endfor %}
+        {% if pending %}<a class="btn" href="/dashboard">Έγκριση χρηστών →</a>{% endif %}
+      </div>
+    </div>
+  </div>
+</div></body></html>

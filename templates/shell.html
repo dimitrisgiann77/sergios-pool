@@ -54,6 +54,7 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
   <div class="body">
     <div class="scrim" onclick="document.getElementById('app').classList.remove('open')"></div>
     <nav class="side" id="side">
+      {% if is_admin %}<div class="item" data-url="/overview?embed=1"><i class="ti ti-dashboard"></i> Σύνοψη</div>{% endif %}
       {% if can_log %}
       <div class="grp">Καταγραφή</div>
       <div class="item" data-url="/pools?embed=1"><i class="ti ti-pool"></i> Πισίνες</div>
@@ -94,7 +95,7 @@ function go(url,el){
 }
 document.querySelectorAll('.item').forEach(function(i){ i.addEventListener('click',function(){ go(i.getAttribute('data-url'), i); }); });
 // default section
-var first = {{ 'true' if can_log else 'false' }} ? document.querySelector('.item[data-url^="/pools?"]') : document.querySelector('.item[data-url^="/pools/dashboard"]');
+var first = {{ 'true' if is_admin else 'false' }} ? document.querySelector('.item[data-url^="/overview"]') : ({{ 'true' if can_log else 'false' }} ? document.querySelector('.item[data-url^="/pools?"]') : document.querySelector('.item[data-url^="/pools/dashboard"]'));
 if(!first) first=document.querySelector('.item');
 go(first.getAttribute('data-url'), first);
 </script>
