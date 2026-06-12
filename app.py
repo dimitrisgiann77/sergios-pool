@@ -1,11 +1,12 @@
 """
-Εστία (Estia) — CONDIAN HOTELS · Κεντρική πλατφόρμα προσωπικού (v12.3)
+Εστία (Estia) — CONDIAN HOTELS · Κεντρική πλατφόρμα προσωπικού (v12.4)
 Backend: Flask + PostgreSQL + SMTP + AI Assistant
 
 Modules:
   - Water Log (νερά χρήσης) — multi-hotel / multi-δίκτυο (v12.3)
   - Pool Log (πισίνες) — multi-hotel / multi-pool
-  - AI Pool Assistant (Βοηθός Πισίνας) — provider-agnostic (Anthropic/OpenAI)
+  - EstiaAI (chat bubble) — provider-agnostic (Anthropic/OpenAI)
+  - Records feed (v12.4) — ενιαία λίστα υποβολών πισινών & νερών
 """
 
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, Response
@@ -55,9 +56,9 @@ ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY', '')
 OPENAI_API_KEY    = os.environ.get('OPENAI_API_KEY', '')
 AI_MODEL          = os.environ.get('AI_MODEL', '')          # override; αλλιώς default ανά πάροχο
 
-POOL_ASSISTANT_PROMPT = """Είσαι ο «Βοηθός Πισίνας», ψηφιακός βοηθός στην εφαρμογή διαχείρισης του ξενοδοχείου.
+POOL_ASSISTANT_PROMPT = """Είσαι το «EstiaAI», ο ψηφιακός βοηθός της πλατφόρμας Εστία (CONDIAN HOTELS).
 Βοηθάς το προσωπικό συντήρησης και τους υπεύθυνους βάρδιας στην ασφαλή, καθαρή και
-νόμιμη καθημερινή λειτουργία των πισινών.
+νόμιμη καθημερινή λειτουργία των πισινών και των δικτύων νερού/ΖΝΧ (νερά χρήσης, legionella).
 # ΑΡΜΟΔΙΟΤΗΤΕΣ
 - Χημεία νερού: ερμηνεία μετρήσεων (pH, ελεύθερο/ολικό χλώριο, αλκαλικότητα,
   κυανουρικό οξύ, σκληρότητα ασβεστίου, θερμοκρασία) και προτάσεις διόρθωσης.
@@ -1360,17 +1361,67 @@ def dashboard():
         q = q.filter(WaterRecord.user_id == f_staff)
     records = q.order_by(WaterRecord.record_date.desc(), WaterRecord.period).limit(60).all()
     users   = User.query.filter_by(is_active=True, approved=True).all()
-    pending = User.query.filter_by(is_active=True, approved=False).all()
     today_q = _scope(WaterRecord.query.filter_by(record_date=date.today()))
     today_records = today_q.order_by(WaterRecord.water_system_id).all()
     today_m = [r for r in today_records if r.period == 'morning']
     today_a = [r for r in today_records if r.period == 'afternoon']
-    return render_template('dashboard.html', records=records, users=users, pending=pending,
+    return render_template('dashboard.html', records=records, users=users,
                            today_morning_list=today_m, today_afternoon_list=today_a,
                            hotels=hotels, systems=systems,
-                           f_hotel=f_hotel, f_system=f_system, f_staff=f_staff,
-                           all_hotels=hotels,
+                           f_hotel=f_hotel, f_system=f_system, f_staff=f_staff)
+
+
+# v12.4 — Χρήστες: δική τους σελίδα στη Διαχείριση (έφυγαν από τον Πίνακα Νερών)
+@app.route('/dashboard/users')
+def users_admin():
+    if not is_admin():
+        return redirect(url_for('login'))
+    users   = User.query.filter_by(is_active=True, approved=True).all()
+    inactive = User.query.filter_by(is_active=False).all()
+    pending = User.query.filter_by(is_active=True, approved=False).all()
+    return render_template('users_admin.html', users=users + inactive, pending=pending,
+                           all_hotels=Hotel.query.filter_by(is_active=True).order_by(Hotel.name).all(),
                            role_labels=ROLE_LABELS, me=current_user())
+
+
+# v12.4 — Records: ενιαίο feed υποβολών (πισίνες + νερά χρήσης), role-scoped
+@app.route('/records')
+def records_feed():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    user = current_user()
+    hids = {h.id for h in allowed_hotels(user)}
+    ftype = request.args.get('type', 'all')          # all | pools | water
+    items = []
+    if ftype in ('all', 'pools'):
+        pids = [p.id for p in Pool.query.all() if p.hotel_id in hids]
+        for r in (PoolRecord.query.filter(PoolRecord.pool_id.in_(pids or [-1]))
+                  .order_by(PoolRecord.recorded_at.desc()).limit(120).all()):
+            items.append({
+                'kind': 'pool', 'when': r.recorded_at, 'date': r.record_date,
+                'period': r.period,
+                'hotel': r.pool.hotel.name if r.pool and r.pool.hotel else '—',
+                'place': r.pool.name if r.pool else '—',
+                'user': r.user.full_name if r.user else '—',
+                'updated': bool(r.updated_at),
+                'edit_url': '/pools/edit/%d' % r.id,
+            })
+    if ftype in ('all', 'water'):
+        sids = [s.id for s in WaterSystem.query.all() if s.hotel_id in hids]
+        for r in (WaterRecord.query.filter(WaterRecord.water_system_id.in_(sids or [-1]))
+                  .order_by(WaterRecord.recorded_at.desc()).limit(120).all()):
+            ws = r.water_system
+            items.append({
+                'kind': 'water', 'when': r.recorded_at, 'date': r.record_date,
+                'period': r.period,
+                'hotel': ws.hotel.name if ws and ws.hotel else '—',
+                'place': ws.name if ws else '—',
+                'user': r.user.full_name if r.user else '—',
+                'updated': bool(r.updated_at),
+                'edit_url': '/edit/%d' % r.id,
+            })
+    items.sort(key=lambda x: x['when'] or datetime.min, reverse=True)
+    return render_template('records.html', items=items[:150], ftype=ftype, user=user)
 
 @app.route('/pools/dashboard')
 def pools_dashboard():
@@ -1406,7 +1457,7 @@ def add_user():
         ))
         db.session.commit()
         log_activity('user_add', data.get('username', ''))
-    return redirect(url_for('dashboard') + '?success=user_added')
+    return redirect(url_for('users_admin') + '?success=user_added')
 
 @app.route('/dashboard/delete-user/<int:user_id>', methods=['POST'])
 def delete_user(user_id):
@@ -1417,7 +1468,7 @@ def delete_user(user_id):
         user.is_active = False
         db.session.commit()
         log_activity('user_delete', user.username)
-    return redirect(url_for('dashboard'))
+    return redirect(url_for('users_admin'))
 
 @app.route('/dashboard/approve-user/<int:user_id>', methods=['POST'])
 def approve_user(user_id):
@@ -1429,7 +1480,7 @@ def approve_user(user_id):
         db.session.commit()
         log_activity('user_approve', u.username)
         notify(u.id, 'Ο λογαριασμός σου εγκρίθηκε. Καλώς ήρθες!', '/pools')
-    return redirect(url_for('dashboard') + '?success=user_approved')
+    return redirect(url_for('users_admin') + '?success=user_approved')
 
 def _protected(actor, target):
     # δεν επιτρέπεται σε χαμηλότερο ρόλο να πειράξει masteradmin
@@ -1441,7 +1492,7 @@ def edit_user(user_id):
         return redirect(url_for('login'))
     actor = current_user(); u = User.query.get(user_id)
     if not u or _protected(actor, u):
-        return redirect(url_for('dashboard'))
+        return redirect(url_for('users_admin'))
     fm = request.form
     u.full_name = (fm.get('full_name') or u.full_name).strip() or u.full_name
     u.email = fm.get('email', '').strip()
@@ -1453,7 +1504,7 @@ def edit_user(user_id):
     u.hotels = Hotel.query.filter(Hotel.id.in_(hids)).all() if hids else []
     db.session.commit()
     log_activity('user_edit', u.username)
-    return redirect(url_for('dashboard') + '?success=user_edited')
+    return redirect(url_for('users_admin') + '?success=user_edited')
 
 @app.route('/dashboard/reset-password/<int:user_id>', methods=['POST'])
 def reset_password(user_id):
@@ -1465,7 +1516,7 @@ def reset_password(user_id):
         if newpw:
             u.password = generate_password_hash(newpw); db.session.commit()
             log_activity('user_reset_password', u.username)
-    return redirect(url_for('dashboard') + '?success=password_reset')
+    return redirect(url_for('users_admin') + '?success=password_reset')
 
 @app.route('/dashboard/toggle-user/<int:user_id>', methods=['POST'])
 def toggle_user(user_id):
@@ -1475,7 +1526,7 @@ def toggle_user(user_id):
     if u and u.id != actor.id and not _protected(actor, u):
         u.is_active = not u.is_active; db.session.commit()
         log_activity('user_toggle', u.username + (' -> active' if u.is_active else ' -> inactive'))
-    return redirect(url_for('dashboard'))
+    return redirect(url_for('users_admin'))
 
 @app.route('/dashboard/activity')
 def activity_log_view():

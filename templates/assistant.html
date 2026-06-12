@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Βοηθός Πισίνας — CONDIAN HOTELS</title>
+<title>EstiaAI — Εστία · CONDIAN HOTELS</title>
 <meta name="theme-color" content="#193847">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <link rel="stylesheet" href="/static/style.css">
@@ -43,8 +43,8 @@ body { display:flex; flex-direction:column; height:100vh; max-width:560px; }
     <a href="/pools" style="color:white;text-decoration:none;margin-right:6px;"><i class="ti ti-arrow-left" style="font-size:20px;"></i></a>
     <img src="/static/img/logo-white.svg" alt="CONDIAN" class="header-icon" style="height:26px;width:auto;">
     <div>
-      <div class="header-title">Βοηθός Πισίνας</div>
-      <div class="header-sub">CONDIAN HOTELS</div>
+      <div class="header-title">EstiaAI</div>
+      <div class="header-sub">Εστία — CONDIAN HOTELS</div>
     </div>
   </div>
   <div class="header-right">
@@ -62,15 +62,15 @@ body { display:flex; flex-direction:column; height:100vh; max-width:560px; }
   {% if not configured %}
   <div class="notice">
     <i class="ti ti-alert-triangle" style="flex-shrink:0;"></i>
-    <span>Ο βοηθός δεν έχει ρυθμιστεί ακόμα. Πρόσθεσε ένα <b>ANTHROPIC_API_KEY</b> ή <b>OPENAI_API_KEY</b> στις μεταβλητές του Railway για να ενεργοποιηθεί.</span>
+    <span>Το EstiaAI δεν έχει ρυθμιστεί ακόμα. Πρόσθεσε ένα <b>ANTHROPIC_API_KEY</b> ή <b>OPENAI_API_KEY</b> στις μεταβλητές του Railway για να ενεργοποιηθεί.</span>
   </div>
   {% endif %}
 </div>
 
 <div class="chat" id="chat">
   <div class="welcome" id="welcome">
-    <i class="ti ti-robot" style="font-size:34px;"></i>
-    <p style="margin-top:10px;">Διάλεξε πισίνα και ρώτησέ με για χημεία νερού, δοσολογία, καθαρισμό ή ελέγχους εξοπλισμού.</p>
+    <i class="ti ti-message-chatbot" style="font-size:34px;"></i>
+    <p style="margin-top:10px;">Είμαι το EstiaAI. Διάλεξε πισίνα (προαιρετικά) και ρώτησέ με για χημεία νερού, ΖΝΧ/νερά χρήσης, δοσολογία, καθαρισμό ή ελέγχους εξοπλισμού.</p>
   </div>
 </div>
 
@@ -130,7 +130,7 @@ async function send(){
     const data=await res.json();
     typing.remove();
     if(data.error==='not_configured'){
-      addMsg('Ο βοηθός δεν έχει ρυθμιστεί ακόμα (λείπει API key). Πρόσθεσε ANTHROPIC_API_KEY ή OPENAI_API_KEY στο Railway.','bot err');
+      addMsg('Το EstiaAI δεν έχει ρυθμιστεί ακόμα (λείπει API key). Πρόσθεσε ANTHROPIC_API_KEY ή OPENAI_API_KEY στο Railway.','bot err');
     } else if(data.error){
       addMsg('Σφάλμα: '+data.error,'bot err');
     } else {

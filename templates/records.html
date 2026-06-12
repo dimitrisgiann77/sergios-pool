@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Εστία — Records</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<style>
+* { box-sizing:border-box; margin:0; padding:0; }
+body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background:#f0f7ff; color:#1a1a1a; }
+.topbar { background:#193847; color:white; padding:14px 24px; display:flex; align-items:center; justify-content:space-between; }
+.topbar-title { font-size:16px; font-weight:600; }
+.topbar-sub { font-size:12px; opacity:0.7; margin-top:2px; }
+.container { max-width:1100px; margin:0 auto; padding:24px; }
+.card { background:white; border-radius:12px; padding:20px; border:1px solid #e0f0ff; margin-bottom:20px; }
+.card-title { font-size:14px; font-weight:600; color:#333; margin-bottom:16px; }
+table { width:100%; border-collapse:collapse; font-size:13px; }
+th { text-align:left; padding:8px; color:#888; font-weight:500; border-bottom:1px solid #eee; }
+td { padding:8px; border-bottom:1px solid #f5f5f5; }
+tr:last-child td { border-bottom:none; }
+.badge { display:inline-block; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:500; }
+.badge-am { background:#e0f2fe; color:#193847; }
+.badge-pm { background:#fef3c7; color:#d97706; }
+.badge-pool { background:#e0f2fe; color:#0369a1; }
+.badge-water { background:#dcfce7; color:#15803d; }
+.badge-upd { background:#f3e8ff; color:#7e22ce; }
+.tabs { display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap; }
+.tab { padding:8px 16px; border-radius:8px; font-size:13px; text-decoration:none; color:#33454d; background:#fff; border:1px solid #d6eef3; }
+.tab.active { background:#193847; color:#fff; border-color:#193847; font-weight:600; }
+.muted { color:#999; }
+</style>
+<style>:root{--brand:{{ theme.primary }};--accent:{{ theme.accent }};}
+.app-header,.app-header.pool,.topbar{background:var(--brand)!important;}
+.tab.active{background:var(--brand)!important;border-color:var(--brand)!important;}</style>
+<script>try{if(new URLSearchParams(location.search).get("embed")==="1"){document.documentElement.classList.add("embed");document.addEventListener("DOMContentLoaded",function(){document.querySelectorAll("a[href^='/']").forEach(function(a){var h=a.getAttribute("href");if(h&&h.indexOf("embed=")<0&&!a.target){a.setAttribute("href",h+(h.indexOf("?")<0?"?":"&")+"embed=1");}});});}}catch(e){}</script>
+<style>.embed .app-header,.embed .topbar{display:none!important;}.embed body{background:transparent!important;}</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div>
+    <div class="topbar-title"><img src="/static/img/logo-white.svg" style="height:22px;vertical-align:middle;margin-right:8px;"> ΕΣΤΙΑ — Records</div>
+    <div class="topbar-sub">Όλες οι υποβολές — Πισίνες & Νερά Χρήσης</div>
+  </div>
+</div>
+
+<div class="container">
+
+  <div class="card">
+    <div class="tabs">
+      <a class="tab {{ 'active' if ftype == 'all' }}" href="/records?type=all"><i class="ti ti-list-details"></i> Όλα</a>
+      <a class="tab {{ 'active' if ftype == 'pools' }}" href="/records?type=pools"><i class="ti ti-pool"></i> Πισίνες</a>
+      <a class="tab {{ 'active' if ftype == 'water' }}" href="/records?type=water"><i class="ti ti-droplet"></i> Νερά Χρήσης</a>
+    </div>
+
+    <div style="overflow-x:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>Ημ/νία</th>
+            <th>Ώρα</th>
+            <th>Τύπος</th>
+            <th>Βάρδια</th>
+            <th>Ξενοδοχείο</th>
+            <th>Πισίνα / Δίκτυο</th>
+            <th>Υπεύθυνος</th>
+            <th></th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for it in items %}
+          <tr>
+            <td>{{ it.date.strftime('%d/%m/%Y') }}</td>
+            <td class="muted">{{ it.when.strftime('%H:%M') if it.when else '—' }}</td>
+            <td>{% if it.kind == 'pool' %}<span class="badge badge-pool"><i class="ti ti-pool"></i> Πισίνα</span>{% else %}<span class="badge badge-water"><i class="ti ti-droplet"></i> Νερά</span>{% endif %}</td>
+            <td><span class="badge {{ 'badge-am' if it.period == 'morning' else 'badge-pm' }}">{{ 'Πρωί' if it.period == 'morning' else 'Απόγ.' }}</span></td>
+            <td>{{ it.hotel }}</td>
+            <td>{{ it.place }}</td>
+            <td>{{ it.user }}</td>
+            <td>{% if it.updated %}<span class="badge badge-upd" title="Έχει ενημερωθεί μετά την αρχική υποβολή">διορθώθηκε</span>{% endif %}</td>
+            <td><a href="{{ it.edit_url }}" class="badge badge-am" style="text-decoration:none;" title="Άνοιγμα"><i class="ti ti-edit"></i></a></td>
+          </tr>
+          {% endfor %}
+          {% if not items %}
+          <tr><td colspan="9" style="text-align:center;color:#aaa;padding:24px;">Δεν υπάρχουν υποβολές ακόμα</td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+    <p class="muted" style="font-size:11px;margin-top:10px;">Εμφανίζονται οι τελευταίες {{ items|length }} υποβολές των ξενοδοχείων σου, με σειρά ώρας υποβολής.</p>
+  </div>
+
+</div>
+</body>
+</html>
