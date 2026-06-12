@@ -1404,6 +1404,45 @@ def theme_admin():
         return redirect(url_for('theme_admin') + '?saved=1')
     return render_template('theme_admin.html', theme=get_theme())
 
+# ── Demo data seeder (admin) — τυχαίες καταγραφές 1-31/5 ──
+@app.route('/admin/seed-demo')
+def seed_demo():
+    if not is_admin():
+        return redirect(url_for('login'))
+    import random
+    user = current_user()
+    pools = Pool.query.filter_by(is_active=True).all()
+    if not pools:
+        return 'Δεν υπάρχουν πισίνες. <a href="/pools/dashboard">Πίσω</a>'
+    yr = int(request.args.get('year', date.today().year))
+    created = 0
+    for p in pools:
+        d = date(yr, 5, 1)
+        while d <= date(yr, 5, 31):
+            for period in ('morning', 'afternoon'):
+                if PoolRecord.query.filter_by(pool_id=p.id, record_date=d, period=period).first():
+                    continue
+                r = PoolRecord(pool_id=p.id, user_id=user.id, record_date=d, period=period)
+                r.free_chlorine     = round(random.uniform(0.5, 1.3), 2) if random.random() > 0.10 else round(random.uniform(0.1, 0.39), 2)
+                r.combined_chlorine = round(random.uniform(0.0, 0.4), 2) if random.random() > 0.10 else round(random.uniform(0.55, 0.9), 2)
+                r.ph                = round(random.uniform(7.2, 7.8), 1) if random.random() > 0.10 else round(random.uniform(7.9, 8.3), 1)
+                r.temp              = round(random.uniform(24, 30), 1)
+                r.turbidity         = round(random.uniform(0.1, 0.8), 1) if random.random() > 0.10 else round(random.uniform(1.1, 1.8), 1)
+                if period == 'morning':
+                    r.cyanuric_acid    = round(random.uniform(20, 60))
+                    r.total_alkalinity = round(random.uniform(80, 120)) if random.random() > 0.10 else round(random.uniform(60, 79))
+                    r.orp              = round(random.uniform(650, 760)) if random.random() > 0.10 else round(random.uniform(580, 640))
+                r.backwash_done = random.random() > 0.85
+                r.recorded_at = datetime(yr, 5, d.day, 8 if period == 'morning' else 17, random.randint(0, 59))
+                db.session.add(r); created += 1
+            d += timedelta(days=1)
+    db.session.commit()
+    log_activity('seed_demo', f'{created} records {yr}-05')
+    return ('<div style="font-family:Arial;padding:40px;text-align:center;">'
+            '<h2 style="color:#193847;">Δημιουργήθηκαν ' + str(created) + ' demo καταγραφές (1-31/5/' + str(yr) + ')</h2>'
+            '<p><a href="/pools/dashboard" style="color:#193847;">→ Pool dashboard</a> &nbsp; '
+            '<a href="/pools/coverage" style="color:#193847;">→ Κάλυψη</a></p></div>')
+
 @app.route('/dashboard/add-hotel', methods=['POST'])
 def add_hotel():
     if not is_admin():
