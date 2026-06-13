@@ -1,5 +1,5 @@
 """
-Εστία (Estia) — CONDIAN HOTELS · Κεντρική πλατφόρμα προσωπικού (v12.16)
+Εστία (Estia) — CONDIAN HOTELS · Κεντρική πλατφόρμα προσωπικού (v12.17)
 Backend: Flask + PostgreSQL + SMTP + AI Assistant
 
 Modules:
@@ -31,6 +31,7 @@ Modules:
   - v12.15 — Βλαβοληψία Φάση 2: admin ρυθμίσεις (ειδικότητες/SLA/tags/χάρτης editable)· δέντρο κατηγοριών·
              SLA badges· export xlsx/csv/pdf· ειδικότητες ανά χρήστη· overview KPI σε νέο Fault
   - v12.16 — Βλαβοληψία Φάση 2β: φωτό/συνημμένα (cover + γκαλερί/upload)· email ειδοποίηση νέας βλάβης
+  - v12.17 — Μενού: «Πίνακας Βλαβών» στην Παρακολούθηση· «Αναφορά βλάβης»→«Δήλωση βλάβης» στη Συντήρηση
 """
 
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, Response
@@ -274,7 +275,7 @@ def inject_theme():
     return {'theme': get_theme()}
 
 # έκδοση/build για το footer του shell
-APP_VERSION = '12.16'
+APP_VERSION = '12.17'
 APP_BUILD   = '2026-06-13'
 
 @app.context_processor
