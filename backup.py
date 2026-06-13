@@ -153,12 +153,16 @@ def sp_list(token=None):
     token = token or _graph_token()
     sid = _site_id(token)
     folder = urllib.parse.quote(SP_FOLDER.strip('/'))
+    # ΣΗΜ.: το Graph ΔΕΝ δέχεται $orderby=createdDateTime στα drive children -> ταξινόμηση client-side
     url = ('https://graph.microsoft.com/v1.0/sites/%s/drive/root:/%s:/children'
-           '?$select=name,id,size,createdDateTime&$orderby=createdDateTime desc&$top=200' % (sid, folder))
+           '?$select=name,id,size,createdDateTime&$top=200' % (sid, folder))
     try:
         _, j = _graph('GET', url, token=token)
-        return j.get('value', [])
-    except Exception:
+        items = j.get('value', [])
+        items.sort(key=lambda x: x.get('createdDateTime', ''), reverse=True)
+        return items
+    except Exception as e:
+        print('[backup] sp_list error:', e)
         return []
 
 

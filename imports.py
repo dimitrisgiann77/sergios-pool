@@ -204,7 +204,7 @@ def import_faults_from_upload(up, mapping):
 SURVEY_META_FIELDS = [
     ('date',   'Ημερομηνία',      ['ημερομηνια', 'date', 'ημ/νια', 'ημ']),
     ('name',   'Όνομα / Πελάτης', ['πελατης', 'name', 'ονομα', 'email', 'guest']),
-    ('room',   'Δωμάτιο',         ['room number', 'roomnumber', 'αρ. δωματιου', 'δωματιο', 'room']),
+    ('room',   'Δωμάτιο',         ['δωματιο', 'room']),
     ('origin', 'Προέλευση',       ['origin', 'προελευση', 'source']),
 ]
 
@@ -218,28 +218,13 @@ _GR_MONTHS = {'ιαν': 1, 'φεβ': 2, 'μαρ': 3, 'απρ': 4, 'μαι': 5, '
 def _auto_guess_meta(headers):
     guess = {}
     norm_headers = [_norm(h) for h in headers]
-    used = set()
     for key, label, syns in SURVEY_META_FIELDS:
-        cands = [_norm(label)] + [_norm(x) for x in syns] + [_norm(key)]
         found = None
+        cands = [_norm(label)] + [_norm(x) for x in syns] + [_norm(key)]
         for i, nh in enumerate(norm_headers):
-            if i in used or not nh:
-                continue
-            if any(c and c == nh for c in cands):
+            if nh and any(c and (c == nh or c in nh) for c in cands):
                 found = i; break
         guess[key] = found
-        if found is not None:
-            used.add(found)
-    for key, label, syns in SURVEY_META_FIELDS:
-        if guess.get(key) is not None:
-            continue
-        cands = [_norm(label)] + [_norm(x) for x in syns] + [_norm(key)]
-        for i, nh in enumerate(norm_headers):
-            if i in used or not nh:
-                continue
-            if any(c and (c in nh or nh in c) for c in cands):
-                guess[key] = i; used.add(i); break
-        guess.setdefault(key, None)
     return guess
 
 
@@ -296,19 +281,9 @@ def _detect_qtype(values):
 
 
 def _survey_qcols(headers, meta_map):
-    """Στήλες-ερωτήσεις με ΜΟΝΑΔΙΚΟΥΣ τίτλους (διπλοί τίτλοι παίρνουν « (2)», « (3)»…)."""
     meta_cols = set(v for v in meta_map.values() if v is not None)
-    seen = {}
-    out = []
-    for i, h in enumerate(headers):
-        t = str(h).strip()
-        if not t or i in meta_cols:
-            continue
-        base = t[:280]
-        seen[base] = seen.get(base, 0) + 1
-        utext = base if seen[base] == 1 else '%s (%d)' % (base, seen[base])
-        out.append((i, utext))
-    return out
+    return [(i, str(h).strip()) for i, h in enumerate(headers)
+            if str(h).strip() and i not in meta_cols]
 
 
 def import_surveys_from_upload(up, title, hotel_id, meta_map):
