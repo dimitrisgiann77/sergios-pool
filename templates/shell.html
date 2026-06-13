@@ -5,13 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>{{ theme.app_title }} — CONDIAN</title>
 <meta name="theme-color" content="{{ theme.primary }}">
-<script>/* v12.8 — εφαρμογή θέματος πριν το paint (no flash) */(function(){try{var m=(document.cookie.match(/(?:^|; )estia_theme=([^;]+)/)||[])[1]||'system';var dark=m==='dark'||(m==='system'&&window.matchMedia&&matchMedia('(prefers-color-scheme:dark)').matches);document.documentElement.setAttribute('data-theme',dark?'dark':'light');}catch(e){}})();</script>
+<script>/* v12.8 — εφαρμογή θέματος πριν το paint (no flash) */(function(){try{var m=(document.cookie.match(/(?:^|; )estia_theme=([^;]+)/)||[])[1]||'system';var dark=m==='dark'||(m==='system'&&window.matchMedia&&matchMedia('(prefers-color-scheme:dark)').matches);document.documentElement.setAttribute('data-theme',dark?'dark':'light');var p=(document.cookie.match(/(?:^|; )estia_palette=([^;]+)/)||[])[1]||'aurora';document.documentElement.setAttribute('data-palette',p);}catch(e){}})();</script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#1a1a1a;}
 .app{display:flex;flex-direction:column;height:100vh;overflow:hidden;}
-.top{background:{{ theme.primary }};color:#fff;height:54px;flex-shrink:0;display:flex;align-items:center;padding:0 14px;gap:12px;}
+:root{--brand:{{ theme.primary }};--accent:{{ theme.accent }};}
+.top{background:var(--brand);color:#fff;height:54px;flex-shrink:0;display:flex;align-items:center;padding:0 14px;gap:12px;}
 .top .ham{display:none;font-size:24px;cursor:pointer;background:none;border:none;color:#fff;}
 .top .brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:15px;letter-spacing:.3px;}
 .top .brand img{height:26px;}
@@ -26,7 +27,7 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 .grp{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#9aa7ad;padding:14px 18px 6px;}
 .item{display:flex;align-items:center;gap:11px;padding:10px 18px;font-size:14px;color:#33454d;cursor:pointer;border-left:3px solid transparent;}
 .item:hover{background:#f3f7f9;}
-.item.active{background:#eef5f8;border-left-color:{{ theme.accent }};color:{{ theme.primary }};font-weight:600;}
+.item.active{background:#eef5f8;border-left-color:var(--accent);color:var(--brand);font-weight:600;}
 .item i{font-size:19px;width:20px;text-align:center;}
 .content{flex:1;min-width:0;background:#eff5f8;}
 .content iframe{width:100%;height:100%;border:0;display:block;}
@@ -70,7 +71,7 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 .top .hbtn{display:flex;align-items:center;gap:6px;font-size:13px;color:#fff;background:rgba(255,255,255,.12);
   border:1px solid rgba(255,255,255,.16);padding:7px 12px;border-radius:9px;cursor:pointer;text-decoration:none;white-space:nowrap;}
 .top .hbtn:hover{background:rgba(255,255,255,.22);}
-.top .hbtn.active{background:#fff;color:{{ theme.primary }};border-color:#fff;font-weight:600;}
+.top .hbtn.active{background:#fff;color:var(--brand);border-color:#fff;font-weight:600;}
 .top .hbtn .ti{font-size:17px;}
 .foot{flex-shrink:0;height:30px;background:{{ theme.primary }};color:rgba(255,255,255,.85);display:flex;align-items:center;
   justify-content:center;gap:9px;font-size:11px;letter-spacing:.2px;border-top:1px solid rgba(255,255,255,.12);padding:0 14px;}
@@ -105,6 +106,9 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 .pm-pill{flex:1;min-width:62px;display:flex;align-items:center;justify-content:center;gap:5px;font-size:12px;
   padding:7px 6px;border-radius:8px;border:1px solid #dde6ec;background:#fff;color:#44535f;cursor:pointer;}
 .pm-pill:hover{background:#f3f7f9;}
+.pm-pill .sw{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:5px;vertical-align:middle;border:1px solid rgba(0,0,0,.1);}
+.pm-palettes{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+.pm-pill.on{border-color:var(--brand);box-shadow:0 0 0 2px rgba(25,56,71,.12);font-weight:600;}
 .pm-pill.on{background:{{ theme.primary }};color:#fff;border-color:{{ theme.primary }};font-weight:600;}
 .pm-pill i{font-size:15px;}
 /* v12.8 — Dark mode (shell) */
@@ -180,6 +184,13 @@ html[data-theme="dark"] .eai-panel{background:#141d2a;border-color:#243140;}
           <button class="pm-pill" data-mode="day" onclick="setTheme('day')"><i class="ti ti-sun"></i> Φωτεινό</button>
           <button class="pm-pill" data-mode="dark" onclick="setTheme('dark')"><i class="ti ti-moon"></i> Σκούρο</button>
           <button class="pm-pill" data-mode="system" onclick="setTheme('system')"><i class="ti ti-device-desktop"></i> Σύστημα</button>
+        </div>
+        <div class="pm-label">Παλέτα</div>
+        <div class="pm-row pm-palettes" id="pm-palettes">
+          <button class="pm-pill" data-pal="aurora" onclick="setPalette('aurora')"><span class="sw" style="background:#193847;"></span> Aurora</button>
+          <button class="pm-pill" data-pal="emerald" onclick="setPalette('emerald')"><span class="sw" style="background:#0e5c43;"></span> Emerald</button>
+          <button class="pm-pill" data-pal="business" onclick="setPalette('business')"><span class="sw" style="background:#33475b;"></span> Business</button>
+          <button class="pm-pill" data-pal="girlie" onclick="setPalette('girlie')"><span class="sw" style="background:#c0367a;"></span> Soft Rose</button>
         </div>
         <div class="pm-sep"></div>
         <a class="pm-item" href="#" onclick="navTo('/settings?embed=1');return false;"><i class="ti ti-settings"></i> Ρυθμίσεις</a>
@@ -281,6 +292,13 @@ function setTheme(mode){
   applyTheme();
   var f=document.getElementById('frame'); if(f && f.src) f.src=f.src;   // re-apply στο περιεχόμενο
 }
+function setPalette(p){
+  document.cookie='estia_palette='+p+';path=/;max-age=31536000';
+  document.documentElement.setAttribute('data-palette',p);
+  document.querySelectorAll('#pm-palettes .pm-pill').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-pal')===p); });
+  var f=document.getElementById('frame'); if(f && f.src) f.src=f.src;
+}
+(function(){ var p=(_ck('estia_palette')||'aurora'); document.querySelectorAll('#pm-palettes .pm-pill').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-pal')===p); }); })();
 applyTheme();
 if(window.matchMedia){ try{ matchMedia('(prefers-color-scheme:dark)').addEventListener('change', applyTheme); }catch(e){} }
 // v12.6 — ζωντανό ρολόι (ημ/νία + ώρα με δευτερόλεπτα)

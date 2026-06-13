@@ -1,5 +1,5 @@
 """
-Εστία (Estia) — CONDIAN HOTELS · Κεντρική πλατφόρμα προσωπικού (v12.23)
+Εστία (Estia) — CONDIAN HOTELS · Κεντρική πλατφόρμα προσωπικού (v12.24)
 Backend: Flask + PostgreSQL + SMTP + AI Assistant
 
 Modules:
@@ -275,7 +275,7 @@ def inject_theme():
     return {'theme': get_theme()}
 
 # έκδοση/build για το footer του shell
-APP_VERSION = '12.23'
+APP_VERSION = '12.24'
 APP_BUILD   = '2026-06-13'
 
 @app.context_processor
@@ -284,10 +284,14 @@ def inject_version():
 
 # v12.12 — Dark mode παντού: αυτόματη ένεση του theme snippet σε ΚΑΘΕ HTML σελίδα
 # (εξαιρούνται login/register που έχουν δικό τους σκούρο design, και όσες το έχουν ήδη).
-_DARK_SNIPPET = ('<script>(function(){try{var m=(document.cookie.match(/(?:^|; )estia_theme=([^;]+)/)||[])[1]||"system";'
+_DARK_SNIPPET = ('<script>(function(){try{var c=document.cookie;'
+                 'var m=(c.match(/(?:^|; )estia_theme=([^;]+)/)||[])[1]||"system";'
                  'var d=m==="dark"||(m==="system"&&window.matchMedia&&matchMedia("(prefers-color-scheme:dark)").matches);'
-                 'if(d)document.documentElement.setAttribute("data-theme","dark");}catch(e){}})();</script>'
-                 '<link rel="stylesheet" href="/static/estia-theme.css">')
+                 'if(d)document.documentElement.setAttribute("data-theme","dark");'
+                 'var p=(c.match(/(?:^|; )estia_palette=([^;]+)/)||[])[1]||"aurora";'
+                 'document.documentElement.setAttribute("data-palette",p);}catch(e){}})();</script>'
+                 '<link rel="stylesheet" href="/static/estia-theme.css">'
+                 '<link rel="stylesheet" href="/static/estia-palette.css">')
 
 @app.after_request
 def _inject_dark(resp):

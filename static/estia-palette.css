@@ -1,0 +1,33 @@
+/* Εστία — Παλέτες χρηστών (v12.24). html[data-palette]. Default: aurora. */
+/* Aurora */
+html[data-palette="aurora"]{--brand:#193847;--accent:#BB9549;--mp-brand:#193847;--b:#193847;}
+html[data-palette="aurora"] .top{background:linear-gradient(110deg,#193847,#0f2733)!important;}
+html[data-palette="aurora"] .topbar{background:linear-gradient(110deg,#193847,#0f2733)!important;}
+html[data-palette="aurora"]:not(.embed):not([data-theme="dark"]) body{background:linear-gradient(165deg,#eef4f8,#e4eef3);}
+html[data-palette="aurora"]:not([data-theme="dark"]) .content{background:linear-gradient(165deg,#eef4f8,#e4eef3);}
+html[data-palette="aurora"]:not([data-theme="dark"]) .item.active{background:#eef5f8;}
+html[data-palette="aurora"]:not([data-theme="dark"]) .kpi{border-color:#e4eef3;}
+/* Emerald Luxe */
+html[data-palette="emerald"]{--brand:#0e5c43;--accent:#d4af37;--mp-brand:#0e5c43;--b:#0e5c43;}
+html[data-palette="emerald"] .top{background:linear-gradient(110deg,#0e5c43,#073d2c)!important;}
+html[data-palette="emerald"] .topbar{background:linear-gradient(110deg,#0e5c43,#073d2c)!important;}
+html[data-palette="emerald"]:not(.embed):not([data-theme="dark"]) body{background:linear-gradient(165deg,#eef7f2,#dcece4);}
+html[data-palette="emerald"]:not([data-theme="dark"]) .content{background:linear-gradient(165deg,#eef7f2,#dcece4);}
+html[data-palette="emerald"]:not([data-theme="dark"]) .item.active{background:#e6f3ec;}
+html[data-palette="emerald"]:not([data-theme="dark"]) .kpi{border-color:#dcece4;}
+/* Business Casual */
+html[data-palette="business"]{--brand:#33475b;--accent:#7c9cb0;--mp-brand:#33475b;--b:#33475b;}
+html[data-palette="business"] .top{background:linear-gradient(110deg,#33475b,#222f3e)!important;}
+html[data-palette="business"] .topbar{background:linear-gradient(110deg,#33475b,#222f3e)!important;}
+html[data-palette="business"]:not(.embed):not([data-theme="dark"]) body{background:linear-gradient(165deg,#f2f5f8,#e9eef3);}
+html[data-palette="business"]:not([data-theme="dark"]) .content{background:linear-gradient(165deg,#f2f5f8,#e9eef3);}
+html[data-palette="business"]:not([data-theme="dark"]) .item.active{background:#e9eff4;}
+html[data-palette="business"]:not([data-theme="dark"]) .kpi{border-color:#e9eef3;}
+/* Soft Rose */
+html[data-palette="girlie"]{--brand:#c0367a;--accent:#f48fb1;--mp-brand:#c0367a;--b:#c0367a;}
+html[data-palette="girlie"] .top{background:linear-gradient(110deg,#c0367a,#8e2058)!important;}
+html[data-palette="girlie"] .topbar{background:linear-gradient(110deg,#c0367a,#8e2058)!important;}
+html[data-palette="girlie"]:not(.embed):not([data-theme="dark"]) body{background:linear-gradient(165deg,#fff2f8,#fbe3ee);}
+html[data-palette="girlie"]:not([data-theme="dark"]) .content{background:linear-gradient(165deg,#fff2f8,#fbe3ee);}
+html[data-palette="girlie"]:not([data-theme="dark"]) .item.active{background:#fce4f0;}
+html[data-palette="girlie"]:not([data-theme="dark"]) .kpi{border-color:#fbe3ee;}
