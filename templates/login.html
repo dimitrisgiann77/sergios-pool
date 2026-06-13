@@ -4,79 +4,37 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Εστία — CONDIAN HOTELS</title>
-<style>
-:root{ --brand:{{ theme.primary }}; --accent:{{ theme.accent }}; --cyan:#38bdf8; --cyan2:#22d3ee; }
-*{ box-sizing:border-box; margin:0; padding:0; }
-html,body{ height:100%; }
-body{
-  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
-  min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px;
-  color:#e7f1f7; position:relative; overflow:hidden;
-  background:radial-gradient(1200px 700px at 75% -10%, #1c4a5e 0%, rgba(28,74,94,0) 55%),
-             radial-gradient(900px 600px at 10% 110%, #123747 0%, rgba(18,55,71,0) 55%),
-             linear-gradient(160deg, #0a1620 0%, #0e2330 45%, #0a1a24 100%);
-}
-#bg{ position:fixed; inset:0; width:100%; height:100%; z-index:0; }
-.orb{ position:fixed; border-radius:50%; filter:blur(60px); opacity:.35; z-index:0; pointer-events:none; animation:float 14s ease-in-out infinite; }
-.orb.a{ width:340px; height:340px; top:-80px; right:-60px; background:radial-gradient(circle, var(--cyan) 0%, transparent 70%); }
-.orb.b{ width:300px; height:300px; bottom:-90px; left:-70px; background:radial-gradient(circle, var(--brand) 0%, transparent 70%); animation-delay:-6s; }
-@keyframes float{ 0%,100%{ transform:translateY(0) } 50%{ transform:translateY(26px) } }
-.card{
-  position:relative; z-index:2; width:100%; max-width:400px; padding:42px 38px;
-  background:linear-gradient(180deg, rgba(18,33,44,.72), rgba(12,24,33,.66));
-  border:1px solid rgba(120,180,210,.22); border-radius:22px;
-  box-shadow:0 30px 80px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.06);
-  backdrop-filter:blur(16px) saturate(120%); -webkit-backdrop-filter:blur(16px) saturate(120%);
-  animation:rise .7s cubic-bezier(.2,.8,.2,1) both;
-}
-@keyframes rise{ from{ opacity:0; transform:translateY(18px) scale(.98) } to{ opacity:1; transform:none } }
-.card::before{ content:""; position:absolute; inset:-1px; border-radius:22px; padding:1px; pointer-events:none;
-  background:linear-gradient(120deg, rgba(56,189,248,.55), rgba(0,0,0,0) 40%, rgba(0,0,0,0) 60%, var(--accent));
-  -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite:xor; mask-composite:exclude; opacity:.5; }
-.logo{ text-align:center; margin-bottom:26px; }
-.logo img{ height:58px; margin-bottom:8px; filter:drop-shadow(0 6px 18px rgba(56,189,248,.35)); }
-.hotel-name{ font-size:20px; font-weight:700; letter-spacing:.6px; color:#fff; }
-.subtitle{ font-size:12.5px; color:#9fc0d2; margin-top:5px; letter-spacing:.2px; }
-.badge-ai{ display:inline-flex; align-items:center; gap:6px; margin-top:12px; font-size:10.5px; letter-spacing:.14em;
-  text-transform:uppercase; color:#bfe6f5; background:rgba(56,189,248,.12); border:1px solid rgba(56,189,248,.3);
-  padding:4px 10px; border-radius:999px; }
-.badge-ai .dot{ width:6px; height:6px; border-radius:50%; background:var(--cyan2); box-shadow:0 0 8px var(--cyan2); animation:pulse 1.6s infinite; }
-@keyframes pulse{ 0%,100%{ opacity:1 } 50%{ opacity:.35 } }
-.form-group{ margin-bottom:16px; }
-label{ display:block; font-size:12.5px; font-weight:500; color:#a8c6d6; margin-bottom:7px; letter-spacing:.2px; }
-input{ width:100%; padding:13px 15px; border:1.5px solid rgba(120,170,200,.28); border-radius:12px; font-size:15px;
-  color:#eaf4fa; background:rgba(8,18,26,.55); transition:border-color .2s, box-shadow .2s; }
-input::placeholder{ color:#6f8a9b; }
-input:focus{ outline:none; border-color:var(--cyan); box-shadow:0 0 0 4px rgba(56,189,248,.16); background:rgba(8,18,26,.8); }
-button[type=submit]{ width:100%; padding:14px; border:none; border-radius:12px; font-size:16px; font-weight:600; cursor:pointer;
-  color:#06222e; margin-top:10px; letter-spacing:.3px;
-  background:linear-gradient(100deg, var(--cyan) 0%, var(--cyan2) 100%);
-  box-shadow:0 10px 26px rgba(56,189,248,.35); transition:transform .12s, box-shadow .2s, filter .2s; }
-button[type=submit]:hover{ filter:brightness(1.05); box-shadow:0 14px 34px rgba(56,189,248,.5); transform:translateY(-1px); }
-button[type=submit]:active{ transform:translateY(0); }
-.error{ background:rgba(220,60,60,.14); color:#ffb4b4; border:1px solid rgba(220,60,60,.4); border-radius:10px;
-  padding:10px 14px; font-size:13px; margin-bottom:16px; text-align:center; }
-.reg{ text-align:center; margin-top:18px; font-size:13px; }
-.reg a{ color:var(--cyan); font-weight:600; text-decoration:none; }
-.lang-switch{ text-align:center; margin-top:16px; font-size:12.5px; color:#7e9aab; }
-.lang-switch a{ color:#bfe6f5; text-decoration:none; font-weight:500; padding:2px 4px; }
-.lang-switch a:hover{ color:#fff; }
-</style>
-<script>try{if(new URLSearchParams(location.search).get("embed")==="1"){document.documentElement.classList.add("embed");}}catch(e){}</script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/auth.css">
 </head>
 <body>
 <canvas id="bg"></canvas>
 <div class="orb a"></div>
 <div class="orb b"></div>
 
+<div class="langbar" id="langbar">
+  <div class="lang-btn" onclick="authToggleLang(event)">
+    <i class="ti ti-world"></i>
+    <span>{{ {'el':'ΕΛ','en':'EN','uk':'UK'}.get(session.get('language','el'),'ΕΛ') }}</span>
+    <i class="ti ti-chevron-down chev"></i>
+  </div>
+  <div class="lang-pop">
+    <a class="lang-opt {{ 'on' if session.get('language','el')=='el' }}" href="/set-language/el"><span class="fl">🇬🇷</span> Ελληνικά</a>
+    <a class="lang-opt {{ 'on' if session.get('language')=='en' }}" href="/set-language/en"><span class="fl">🇬🇧</span> English</a>
+    <a class="lang-opt {{ 'on' if session.get('language')=='uk' }}" href="/set-language/uk"><span class="fl">🇺🇦</span> Українська</a>
+  </div>
+</div>
+
 <div class="card">
-  <div class="logo">
-    <img src="{{ theme.logo or '/static/img/logo-white.svg' }}" alt="logo">
-    <div class="hotel-name">{{ theme.app_title }}</div>
-    <div class="subtitle">Η πλατφόρμα του προσωπικού CONDIAN</div>
+  <div class="logo-block">
+    <div class="logo-wrap"><img src="/static/img/logo-white.svg" alt="logo"></div>
+    <div class="brandname">{{ theme.app_title }}</div>
+    <div class="tagline">we reinvent the way we work</div>
     <div class="badge-ai"><span class="dot"></span> AI-Powered · SpithaAI</div>
   </div>
-  {% if error %}<div class="error">{{ error }}</div>{% endif %}
+  {% if error %}<div class="msg error">{{ error }}</div>{% endif %}
   <form method="POST">
     <div class="form-group">
       <label>Username</label>
@@ -88,30 +46,18 @@ button[type=submit]:active{ transform:translateY(0); }
     </div>
     <button type="submit">Είσοδος →</button>
   </form>
-  <div class="reg"><a href="/register">Εγγραφή νέου χρήστη →</a></div>
-  <div class="lang-switch">
-    <a href="/set-language/el">ΕΛ</a> · <a href="/set-language/en">EN</a> · <a href="/set-language/uk">UK</a>
-  </div>
+  <div class="link"><a href="/register">Εγγραφή νέου χρήστη →</a></div>
 </div>
 
-<script>
-(function(){
-  var c=document.getElementById('bg'), x=c.getContext('2d'), W,H,DPR=Math.min(window.devicePixelRatio||1,2), pts=[];
-  function size(){ W=c.width=innerWidth*DPR; H=c.height=innerHeight*DPR; c.style.width=innerWidth+'px'; c.style.height=innerHeight+'px'; }
-  size(); addEventListener('resize', size);
-  var N=Math.min(90, Math.round(innerWidth*innerHeight/16000));
-  for(var i=0;i<N;i++){ pts.push({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*.25*DPR,vy:(Math.random()-.5)*.25*DPR}); }
-  var LINK=140*DPR;
-  function frame(){
-    x.clearRect(0,0,W,H);
-    for(var i=0;i<pts.length;i++){ var p=pts[i]; p.x+=p.vx; p.y+=p.vy; if(p.x<0||p.x>W) p.vx*=-1; if(p.y<0||p.y>H) p.vy*=-1; }
-    for(var i=0;i<pts.length;i++){ for(var j=i+1;j<pts.length;j++){ var a=pts[i], b=pts[j], dx=a.x-b.x, dy=a.y-b.y, d=Math.sqrt(dx*dx+dy*dy);
-      if(d<LINK){ var o=(1-d/LINK)*.5; x.strokeStyle='rgba(56,189,248,'+o.toFixed(3)+')'; x.lineWidth=DPR; x.beginPath(); x.moveTo(a.x,a.y); x.lineTo(b.x,b.y); x.stroke(); } } }
-    for(var i=0;i<pts.length;i++){ var p=pts[i]; x.fillStyle='rgba(125,220,250,.85)'; x.beginPath(); x.arc(p.x,p.y,1.7*DPR,0,6.2832); x.fill(); }
-    requestAnimationFrame(frame);
-  }
-  frame();
-})();
-</script>
+<footer class="auth-foot">
+  <div class="cright">© 2026 CONDIAN Hotels — All rights reserved.</div>
+  <div class="auth-social">
+    <a href="#" title="Facebook" target="_blank" rel="noopener"><i class="ti ti-brand-facebook"></i></a>
+    <a href="#" title="LinkedIn" target="_blank" rel="noopener"><i class="ti ti-brand-linkedin"></i></a>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+<script src="/static/auth.js"></script>
 </body>
 </html>

@@ -3,50 +3,50 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Εγγραφή — CONDIAN HOTELS</title>
-<style>
-* { box-sizing:border-box; margin:0; padding:0; }
-body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background:linear-gradient(135deg,#193847 0%,#122a36 100%); min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px; }
-.card { background:white; border-radius:20px; padding:36px 32px; width:100%; max-width:420px; box-shadow:0 20px 60px rgba(0,0,0,0.3); }
-.logo { text-align:center; margin-bottom:22px; }
-.logo img { height:56px; }
-.hotel-name { font-size:18px; font-weight:700; color:#193847; letter-spacing:0.5px; margin-top:8px; }
-.subtitle { font-size:13px; color:#888; margin-top:4px; }
-.form-group { margin-bottom:14px; }
-label { display:block; font-size:13px; font-weight:500; color:#555; margin-bottom:5px; }
-input, select { width:100%; padding:11px 13px; border:1.5px solid #e5e5e0; border-radius:10px; font-size:15px; color:#1a1a1a; background:#fafafa; }
-input:focus, select:focus { outline:none; border-color:#193847; background:white; }
-.grid2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-button { width:100%; padding:14px; background:#193847; color:white; border:none; border-radius:10px; font-size:16px; font-weight:600; cursor:pointer; margin-top:6px; }
-button:hover { background:#122a36; }
-.msg { border-radius:8px; padding:12px 14px; font-size:13px; margin-bottom:14px; text-align:center; }
-.error { background:#FEE; color:#c0392b; border:1px solid #FCC; }
-.ok { background:#dcfce7; color:#16a34a; border:1px solid #bbf7d0; }
-.link { text-align:center; margin-top:18px; font-size:13px; }
-.link a { color:#193847; text-decoration:none; font-weight:500; }
-.hint { font-size:11px; color:#aaa; margin-top:3px; }
-</style>
-<style>:root{--brand:{{ theme.primary }};--accent:{{ theme.accent }};}
-.app-header,.app-header.pool,.topbar{background:var(--brand)!important;}
-.submit-btn,.submit-btn.pool,.btn-primary,.save-btn{background:var(--brand)!important;}
-.period-btn.active,.period-btn.pool.active{border-bottom-color:var(--accent)!important;color:var(--brand)!important;}</style>
-<style>body{background:linear-gradient(135deg,var(--brand) 0%,var(--brand) 100%)!important;} button[type=submit]{background:var(--brand)!important;}</style>
-<script>try{if(new URLSearchParams(location.search).get("embed")==="1"){document.documentElement.classList.add("embed");document.addEventListener("DOMContentLoaded",function(){document.querySelectorAll("a[href^='/']").forEach(function(a){var h=a.getAttribute("href");if(h&&h.indexOf("embed=")<0&&!a.target){a.setAttribute("href",h+(h.indexOf("?")<0?"?":"&")+"embed=1");}});});}}catch(e){}</script>
-<style>.embed .app-header,.embed .topbar{display:none!important;}.embed body{background:transparent!important;}</style>
+<title>Εγγραφή — Εστία · CONDIAN HOTELS</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/auth.css">
 </head>
 <body>
-<div class="card">
-  <div class="logo">
-    <img src="{{ theme.logo or '/static/img/logo-mark.png' }}" alt="logo">
-    <div class="hotel-name">{{ theme.app_title }}</div>
-    <div class="subtitle">Εγγραφή προσωπικού</div>
+<canvas id="bg"></canvas>
+<div class="orb a"></div>
+<div class="orb b"></div>
+
+<div class="langbar" id="langbar">
+  <div class="lang-btn" onclick="authToggleLang(event)">
+    <i class="ti ti-world"></i>
+    <span>{{ {'el':'ΕΛ','en':'EN','uk':'UK'}.get(session.get('language','el'),'ΕΛ') }}</span>
+    <i class="ti ti-chevron-down chev"></i>
   </div>
+  <div class="lang-pop">
+    <a class="lang-opt {{ 'on' if session.get('language','el')=='el' }}" href="/set-language/el"><span class="fl">🇬🇷</span> Ελληνικά</a>
+    <a class="lang-opt {{ 'on' if session.get('language')=='en' }}" href="/set-language/en"><span class="fl">🇬🇧</span> English</a>
+    <a class="lang-opt {{ 'on' if session.get('language')=='uk' }}" href="/set-language/uk"><span class="fl">🇺🇦</span> Українська</a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="logo-block">
+    <div class="logo-wrap"><img src="/static/img/logo-white.svg" alt="logo"></div>
+    <div class="brandname">{{ theme.app_title }}</div>
+    <div class="tagline">we reinvent the way we work</div>
+  </div>
+
   {% if not enabled %}
     <div class="msg error">Η εγγραφή δεν είναι αυτή τη στιγμή διαθέσιμη. Επικοινώνησε με τη διοίκηση.</div>
   {% elif done %}
     <div class="msg ok">Η εγγραφή ολοκληρώθηκε! Ο λογαριασμός θα ενεργοποιηθεί μόλις τον εγκρίνει η διοίκηση.</div>
   {% else %}
     {% if error %}<div class="msg error">{{ error }}</div>{% endif %}
+
+    <div class="oauth">
+      <button type="button" class="oauth-btn google" onclick="authSoon('Sign up with Google')"><i class="ti ti-brand-google"></i> Sign up with Google</button>
+      <button type="button" class="oauth-btn apple" onclick="authSoon('Sign up with Apple ID')"><i class="ti ti-brand-apple"></i> Sign up with Apple ID</button>
+    </div>
+    <div class="divider">ή με email</div>
+
     <form method="POST">
       <div class="form-group"><label>Ονοματεπώνυμο</label><input type="text" name="full_name" required autofocus></div>
       <div class="grid2">
@@ -58,10 +58,21 @@ button:hover { background:#122a36; }
         <div class="form-group"><label>Κινητό</label><input type="text" name="phone"></div>
       </div>
       <div class="form-group"><label>Κωδικός εγγραφής</label><input type="text" name="reg_code" required><div class="hint">Δόθηκε από τη διοίκηση.</div></div>
-      <button type="submit">Εγγραφή</button>
+      <button type="submit">Εγγραφή →</button>
     </form>
   {% endif %}
   <div class="link"><a href="/">← Έχω ήδη λογαριασμό</a></div>
 </div>
+
+<footer class="auth-foot">
+  <div class="cright">© 2026 CONDIAN Hotels — All rights reserved.</div>
+  <div class="auth-social">
+    <a href="#" title="Facebook" target="_blank" rel="noopener"><i class="ti ti-brand-facebook"></i></a>
+    <a href="#" title="LinkedIn" target="_blank" rel="noopener"><i class="ti ti-brand-linkedin"></i></a>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+<script src="/static/auth.js"></script>
 </body>
 </html>
