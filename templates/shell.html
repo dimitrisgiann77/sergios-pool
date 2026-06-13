@@ -60,6 +60,11 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 .top .hdr-clock span{opacity:.72;font-size:10.5px;}
 .top .hdr-weather{display:flex;align-items:center;gap:7px;font-size:12.5px;padding:5px 10px;border-radius:9px;background:rgba(255,255,255,.12);}
 .top .hdr-weather i{font-size:18px;}
+.top .hdr-hotel{display:flex;align-items:center;gap:6px;font-size:12.5px;padding:4px 9px;border-radius:9px;background:rgba(255,255,255,.12);}
+.top .hdr-hotel i{font-size:17px;}
+.top .hdr-hotel select{background:transparent;border:0;color:#fff;font-size:12.5px;font-weight:600;outline:none;cursor:pointer;max-width:170px;}
+.top .hdr-hotel select option{color:#1a1a1a;}
+.top .hdr-hotel span{font-weight:600;}
 .top .hdr-weather .loc{opacity:.85;font-size:11px;}
 .top .apps{display:flex;align-items:center;gap:6px;margin-right:4px;}
 .top .hbtn{display:flex;align-items:center;gap:6px;font-size:13px;color:#fff;background:rgba(255,255,255,.12);
@@ -130,6 +135,17 @@ html[data-theme="dark"] .eai-panel{background:#141d2a;border-color:#243140;}
       <div class="hdr-clock"><b id="hclock">—:—:—</b><span id="hdate">—</span></div>
       <div class="hdr-weather" id="hweather"><i class="ti ti-cloud"></i><span class="t">—</span><span class="loc"></span></div>
     </div>
+    {% if nav_hotels|length > 1 %}
+    <div class="hdr-hotel" title="Εναλλαγή ξενοδοχείου">
+      <i class="ti ti-building-skyscraper"></i>
+      <select id="hotelSwitch" onchange="setHotel(this.value)">
+        <option value="all" {{ 'selected' if not active_hid }}>Όλα τα ξενοδοχεία</option>
+        {% for h in nav_hotels %}<option value="{{ h.id }}" {{ 'selected' if active_hid==h.id }}>{{ h.name }}</option>{% endfor %}
+      </select>
+    </div>
+    {% elif nav_hotels|length == 1 %}
+    <div class="hdr-hotel"><i class="ti ti-building-skyscraper"></i><span>{{ nav_hotels[0].name }}</span></div>
+    {% endif %}
     <div class="sp"></div>
     <div class="apps">
       <button class="hbtn active" onclick="estiaSoon('Operations')" title="Operations"><i class="ti ti-tools"></i><span>Operations</span></button>
@@ -313,7 +329,8 @@ if(window.matchMedia){ try{ matchMedia('(prefers-color-scheme:dark)').addEventLi
 var frame=document.getElementById('frame');
 function go(url,el){
   frame.src=url;
-  document.querySelectorAll('.item').forEach(function(i){i.classList.remove('active');});
+  function setHotel(v){fetch('/set-hotel/'+encodeURIComponent(v)).then(function(){var f=document.getElementById('frame');if(f&&f.src)f.src=f.src;}).catch(function(){});}
+document.querySelectorAll('.item').forEach(function(i){i.classList.remove('active');});
   if(el) el.classList.add('active');
   document.getElementById('app').classList.remove('open');
 }

@@ -1,5 +1,5 @@
 """
-Εστία (Estia) — CONDIAN HOTELS · Κεντρική πλατφόρμα προσωπικού (v12.18)
+Εστία (Estia) — CONDIAN HOTELS · Κεντρική πλατφόρμα προσωπικού (v12.19)
 Backend: Flask + PostgreSQL + SMTP + AI Assistant
 
 Modules:
@@ -275,7 +275,7 @@ def inject_theme():
     return {'theme': get_theme()}
 
 # έκδοση/build για το footer του shell
-APP_VERSION = '12.18'
+APP_VERSION = '12.19'
 APP_BUILD   = '2026-06-13'
 
 @app.context_processor
@@ -319,6 +319,40 @@ def allowed_hotels(u):
     if assigned:
         return sorted(assigned, key=lambda h: h.name)
     return Hotel.query.filter_by(is_active=True).order_by(Hotel.name).all()   # χωρίς ανάθεση = όλα
+
+# ── v12.19 — Global εναλλάκτης ξενοδοχείου (session scope) ────────────────────
+def active_hotel_id():
+    """Το ενεργό ξενοδοχείο από τον global εναλλάκτη (None = όλα)."""
+    v = session.get('active_hotel_id')
+    try:
+        return int(v) if v not in (None, '', 'all') else None
+    except Exception:
+        return None
+
+def scoped_hotels(u):
+    """allowed_hotels περιορισμένα στο ενεργό ξενοδοχείο (αν έχει επιλεγεί & επιτρέπεται)."""
+    hs = allowed_hotels(u)
+    aid = active_hotel_id()
+    if aid:
+        sub = [h for h in hs if h.id == aid]
+        if sub:
+            return sub
+    return hs
+
+def scoped_hotel_ids(u):
+    return {h.id for h in scoped_hotels(u)}
+
+@app.route('/set-hotel/<hid>')
+def set_hotel(hid):
+    if 'user_id' not in session:
+        return ('', 401)
+    session['active_hotel_id'] = '' if hid in ('all', '0', '') else hid
+    return ('', 204)
+
+@app.context_processor
+def inject_hotelscope():
+    u = current_user()
+    return {'nav_hotels': (allowed_hotels(u) if u else []), 'active_hid': active_hotel_id()}
 
 def can_access_pool(u, pool):
     if u is None or pool is None:
@@ -1556,7 +1590,7 @@ def dashboard():
     systems = (WaterSystem.query.filter_by(is_active=True)
                .order_by(WaterSystem.hotel_id, WaterSystem.name).all())
     # v12.3 — φίλτρα ανά ξενοδοχείο / δίκτυο / χρήστη
-    f_hotel  = request.args.get('hotel_id', type=int)
+    f_hotel  = request.args.get('hotel_id', type=int) or active_hotel_id()
     f_system = request.args.get('system_id', type=int)
     f_staff  = request.args.get('staff_id', type=int)
     def _scope(q):
@@ -1608,7 +1642,7 @@ _RECORDS_TYPE_LABEL = {'all': 'Όλες οι υποβολές', 'pools': 'Πισ
 
 def _records_items(user, ftype='all'):
     """Κοινός builder της λίστας Records (page + εξαγωγές PDF/XLSX)."""
-    hids = {h.id for h in allowed_hotels(user)}
+    hids = scoped_hotel_ids(user)
     items = []
     if ftype in ('all', 'pools'):
         pids = [p.id for p in Pool.query.all() if p.hotel_id in hids]
@@ -1685,7 +1719,7 @@ def pools_dashboard():
     pools = [p for p in Pool.query.filter_by(is_active=True).all() if p.hotel_id in hids]
     pids = {p.id for p in pools}
     # v12.5 — φίλτρα ανά ξενοδοχείο / πισίνα / χρήστη (mirror Πίνακα Νερών)
-    f_hotel = request.args.get('hotel_id', type=int)
+    f_hotel = request.args.get('hotel_id', type=int) or active_hotel_id()
     f_pool  = request.args.get('pool_id', type=int)
     f_staff = request.args.get('staff_id', type=int)
     def _scope(q):
@@ -2061,7 +2095,7 @@ def areas_dashboard():
     if 'user_id' not in session:
         return redirect(url_for('login'))
     user = current_user()
-    hids = {h.id for h in allowed_hotels(user)}
+    hids = scoped_hotel_ids(user)
     areas = [a for a in Area.query.filter_by(is_active=True).all() if a.hotel_id in hids]
     aids = {a.id for a in areas}
     q = Reading.query
@@ -2077,7 +2111,8 @@ def overview():
     if not is_admin():
         return redirect(url_for('login'))
     today = date.today()
-    hotels = Hotel.query.filter_by(is_active=True).order_by(Hotel.name).all()
+    hotels = scoped_hotels(current_user())
+    hids = {h.id for h in hotels}
     cov = []
     total_exp = total_done = 0
     for h in hotels:
@@ -2096,10 +2131,12 @@ def overview():
     rec_dates = [today, today - timedelta(days=1)]
     alerts = []
     for r in PoolRecord.query.filter(PoolRecord.record_date.in_(rec_dates)).order_by(PoolRecord.recorded_at.desc()).limit(80).all():
+        if r.pool and r.pool.hotel_id not in hids: continue
         for a in compute_pool_actions(r):
             alerts.append({'where': (r.pool.hotel.name + ' / ' + r.pool.name) if (r.pool and r.pool.hotel) else (r.pool.name if r.pool else '—'),
                            'label': a['label'], 'urgent': a['urgent'], 'date': r.record_date})
     for r in Reading.query.filter(Reading.record_date.in_(rec_dates)).order_by(Reading.recorded_at.desc()).limit(80).all():
+        if r.area and r.area.hotel_id not in hids: continue
         for a in area_actions(r):
             alerts.append({'where': (r.area.hotel.name + ' / ' + r.area.name) if (r.area and r.area.hotel) else '—',
                            'label': a['label'], 'urgent': False, 'date': r.record_date})
@@ -2111,7 +2148,7 @@ def overview():
             'areas': Area.query.filter_by(is_active=True).count(),
             'users': User.query.filter_by(is_active=True, approved=True).count(),
             'compliance': int(100 * total_done / total_exp) if total_exp else 100,
-            'open_faults': (__import__('faults').Fault.query.filter(~__import__('faults').Fault.status.in_(('done','not_done','resubmitted'))).count()),
+            'open_faults': (__import__('faults').Fault.query.filter(__import__('faults').Fault.hotel_id.in_(hids or [-1])).filter(~__import__('faults').Fault.status.in_(('done','not_done','resubmitted'))).count()),
             'pending': len(pending), 'alerts': len(alerts)}
     return render_template('overview.html', cov=cov, alerts=alerts, faults=faults,
                            pending=pending, kpis=kpis, areas_labels=AREA_LABELS)
