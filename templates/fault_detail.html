@@ -83,6 +83,13 @@ select, textarea, input { padding:9px 11px; border:1px solid #d6eef3; border-rad
       <div class="desc">{{ f.description }}</div>
       {% if candidates %}<p class="muted" style="margin-top:10px;">Δεξαμενή (αυτόματη ανάθεση): {% for c in candidates %}{{ (c.user.full_name if c.user else c.specialty) }}{{ '· ' if not loop.last }}{% endfor %}</p>{% endif %}
 
+      <h4 style="margin:16px 0 8px;font-size:14px;">Φωτογραφίες / Αρχεία</h4>
+      {% if files %}<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">{% for a in files %}<a href="{{ a.url }}" target="_blank"><img src="{{ a.url }}" style="height:84px;width:84px;object-fit:cover;border-radius:8px;border:1px solid #e0f0ff;"></a>{% endfor %}</div>{% else %}<p class="muted">Καμία φωτογραφία ακόμα.</p>{% endif %}
+      <form method="POST" action="/dashboard/fault/{{ f.id }}/attach?embed=1" enctype="multipart/form-data" style="margin-bottom:6px;">
+        <input type="file" name="files" accept="image/*" multiple>
+        <button class="btn" type="submit" style="padding:7px 12px;"><i class="ti ti-photo-plus"></i> Προσθήκη</button>
+      </form>
+
       <h4 style="margin:16px 0 8px;font-size:14px;">Σχόλια</h4>
       {% for c in comments %}
       <div class="cmt {{ 'adm' if c.audience=='διοίκηση' else 'sub' }}">

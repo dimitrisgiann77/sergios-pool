@@ -8,9 +8,11 @@ Plug-in: γίνεται `import faults` από το ΤΕΛΟΣ του app.py (α
 """
 import os, csv
 from datetime import datetime
+import base64, threading
 from flask import request, redirect, url_for, render_template, session, jsonify
 from app import (app, db, current_user, is_admin, allowed_hotels, notify, notify_admins,
-                 log_activity, Hotel, User, Pool, Setting, ROLE_RANK, role_rank, BASE_DIR)
+                 log_activity, Hotel, User, Pool, Setting, ROLE_RANK, role_rank, BASE_DIR,
+                 send_email, EMAIL_TO_LIST)
 
 # ── Σταθερές ─────────────────────────────────────────────────────────────────
 PRIORITIES = ('Υψηλή', 'Κανονική', 'Χαμηλή')
@@ -328,10 +330,12 @@ def fault_report():
                   submitted_by=user.id, source='Ενδοξενοδοχειακά', status='pending_assign')
         db.session.add(f); db.session.flush()
         log_change(f, 'πεδίο', 'δημιουργία', '', f.code, user.id)
+        _save_cover(f, request.files.get('cover'))
         auto_assign(f)
         db.session.commit()
         log_activity('fault_report', f.code)
         notify_admins('Νέα βλάβη: %s' % f.code, '/dashboard/fault/%d?embed=1' % f.id)
+        threading.Thread(target=_bg_fault_email, args=(f.id,), daemon=True).start()
         return render_template('fault_submit.html', done=True, code=f.code, hotels=hotels, cats=cats,
                                priorities=PRIORITIES, user=user)
     return render_template('fault_submit.html', done=False, hotels=hotels, cats=cats,
@@ -496,6 +500,64 @@ def faults_bulk():
     db.session.commit()
     log_activity('faults_bulk', '%s x%d' % (action, n))
     return redirect(url_for('faults_inbox') + '?embed=1')
+
+# ── v12.16 (Φάση 2β) — συνημμένα/φωτό + email ────────────────────────────────
+def _img_dataurl(file, limit=1500 * 1024):
+    try:
+        if file and file.filename and file.mimetype and file.mimetype.startswith('image/'):
+            raw = file.read()
+            if 0 < len(raw) <= limit:
+                return 'data:' + file.mimetype + ';base64,' + base64.b64encode(raw).decode()
+    except Exception:
+        pass
+    return None
+
+def _save_cover(f, file):
+    url = _img_dataurl(file)
+    if url:
+        f.cover_image = url
+        db.session.add(FaultAttachment(fault_id=f.id, url=url, by_user_id=f.submitted_by))
+
+def _bg_fault_email(fid):
+    with app.app_context():
+        f = Fault.query.get(fid)
+        if not f:
+            return
+        try:
+            cat = f.category.name if f.category else '—'
+            who = f.submitter.full_name if f.submitter else '—'
+            hotel = f.hotel.name if f.hotel else '—'
+            html = ('<div style="font-family:Arial,sans-serif;max-width:600px;">'
+                    '<div style="background:#193847;color:#fff;padding:16px;border-radius:8px 8px 0 0;">'
+                    '<h2 style="margin:0;">Νέα βλάβη — %s</h2></div>'
+                    '<div style="background:#f9f9f9;padding:16px;border:1px solid #eee;">'
+                    '<p><b>Ξενοδοχείο:</b> %s</p><p><b>Κατηγορία:</b> %s</p>'
+                    '<p><b>Προτεραιότητα:</b> %s</p><p><b>Από:</b> %s</p>'
+                    '<p><b>Περιγραφή:</b><br>%s</p></div></div>'
+                    % (f.code, hotel, cat, f.priority, who, (f.description or '')))
+            send_email('Εστία — Νέα βλάβη %s' % f.code, html, EMAIL_TO_LIST)
+        except Exception as e:
+            print('[faults] email skipped:', e)
+
+@app.route('/dashboard/fault/<int:fid>/attach', methods=['POST'])
+def fault_attach(fid):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    user = current_user()
+    f = Fault.query.get_or_404(fid)
+    if not can_view(user, f):
+        return redirect(url_for('faults_inbox') + '?embed=1')
+    n = 0
+    for file in request.files.getlist('files'):
+        url = _img_dataurl(file)
+        if url:
+            db.session.add(FaultAttachment(fault_id=fid, url=url, by_user_id=user.id)); n += 1
+            if not f.cover_image:
+                f.cover_image = url
+    if n:
+        log_change(f, 'πεδίο', 'συνημμένα', '', '+%d' % n, user.id)
+        db.session.commit()
+    return redirect(url_for('fault_detail', fid=fid) + '?embed=1')
 
 # ── v12.15 (Φάση 2) — SLA, admin ρυθμίσεις, export, ειδικότητες χρηστών ──────
 def sla_minutes(f):

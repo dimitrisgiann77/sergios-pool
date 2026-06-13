@@ -45,7 +45,7 @@ textarea { min-height:110px; resize:vertical; }
   {% else %}
   <div class="card">
     {% if error %}<div class="error">{{ error }}</div>{% endif %}
-    <form method="POST" action="/fault?embed=1">
+    <form method="POST" action="/fault?embed=1" enctype="multipart/form-data">
       <label>Ξενοδοχείο</label>
       <select name="hotel_id" required>
         {% for h in hotels %}<option value="{{ h.id }}">{{ h.name }}</option>{% endfor %}
@@ -67,6 +67,8 @@ textarea { min-height:110px; resize:vertical; }
       </div>
       <label>Περιγραφή</label>
       <textarea name="message" placeholder="Περίγραψε τη βλάβη (τι, πού, πόσο επείγον)…" required></textarea>
+      <label>Φωτογραφία (προαιρετικά)</label>
+      <input type="file" name="cover" accept="image/*">
       <button class="btn" type="submit"><i class="ti ti-send"></i> Υποβολή βλάβης</button>
     </form>
   </div>
