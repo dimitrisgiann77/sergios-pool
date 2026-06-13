@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Εστία — Αντιστοίχιση στηλών</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<style>
+* { box-sizing:border-box; margin:0; padding:0; }
+body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background:#f0f7ff; color:#1a1a1a; }
+.topbar { background:#193847; color:white; padding:14px 24px; display:flex; align-items:center; justify-content:space-between; }
+.topbar-title { font-size:16px; font-weight:600; display:flex; align-items:center; gap:8px; }
+.topbar a { color:#fff; text-decoration:none; font-size:13px; }
+.container { max-width:1040px; margin:0 auto; padding:24px; }
+.card { background:white; border-radius:14px; padding:20px; border:1px solid #e0f0ff; margin-bottom:18px; }
+.card-title { font-size:14px; font-weight:600; color:#333; margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+.muted { color:#94a3b8; font-size:12.5px; }
+.maprow { display:flex; align-items:center; gap:12px; padding:9px 0; border-bottom:1px solid #f4f7fa; }
+.maprow .fld { width:200px; font-size:13.5px; font-weight:600; color:#334155; display:flex; align-items:center; gap:6px; }
+.req { color:#ef4444; font-size:11px; }
+select { padding:8px 10px; border:1px solid #d6eef3; border-radius:8px; font-size:13.5px; min-width:240px; background:#fff; }
+.btn { padding:11px 18px; border:none; border-radius:9px; font-size:14px; font-weight:600; cursor:pointer; background:#193847; color:#fff; display:inline-flex; align-items:center; gap:7px; }
+.btn.ghost { background:#eef5f8; color:#193847; text-decoration:none; }
+.err { background:#fee2e2; color:#dc2626; padding:11px 14px; border-radius:9px; margin-bottom:16px; font-size:13.5px; }
+.prev-wrap { overflow:auto; border:1px solid #e7eef4; border-radius:10px; }
+table.prev { border-collapse:collapse; font-size:12px; white-space:nowrap; }
+table.prev th, table.prev td { padding:6px 9px; border-bottom:1px solid #f0f4f7; border-right:1px solid #f4f7fa; text-align:left; max-width:200px; overflow:hidden; text-overflow:ellipsis; }
+table.prev th { background:#f6fbff; color:#475569; font-weight:600; position:sticky; top:0; }
+.pill { display:inline-block; font-size:11px; background:#eef5f8; color:#475569; border-radius:6px; padding:2px 7px; }
+</style>
+<style>:root{--brand:{{ theme.primary if theme else '#193847' }};}.topbar{background:var(--brand)!important;}.btn{background:var(--brand)!important;}</style>
+<script>try{if(new URLSearchParams(location.search).get("embed")==="1"){document.documentElement.classList.add("embed");}}catch(e){}</script>
+<style>.embed .topbar{display:none!important;}.embed body{background:transparent!important;}</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-title"><i class="ti ti-arrows-split"></i> Αντιστοίχιση στηλών → Βλάβες</div>
+  <div><a href="/dashboard/imports?embed=1"><i class="ti ti-arrow-left"></i> Κέντρο Εισαγωγής</a></div>
+</div>
+<div class="container">
+
+  {% if error %}<div class="err"><i class="ti ti-alert-triangle"></i> {{ error }}</div>{% endif %}
+
+  <div class="card">
+    <div class="card-title"><i class="ti ti-file-spreadsheet"></i> {{ up.filename }} · {{ n_rows }} γραμμές</div>
+    <p class="muted">Διάλεξε ποια <b>στήλη του αρχείου σου</b> αντιστοιχεί σε κάθε <b>πεδίο της Εστίας</b>. Τα πεδία με <span class="req">*</span> είναι υποχρεωτικά. Έκανα μια αρχική πρόταση — διόρθωσέ την όπου χρειάζεται.</p>
+  </div>
+
+  <form method="POST" action="/dashboard/imports/{{ up.id }}/commit?embed=1">
+    <div class="card">
+      <div class="card-title"><i class="ti ti-arrows-split"></i> Αντιστοίχιση πεδίων</div>
+      {% for key, label, req, syns in fields %}
+      <div class="maprow">
+        <div class="fld">{{ label }}{% if req %} <span class="req">*</span>{% endif %}</div>
+        <select name="map_{{ key }}">
+          <option value="-1">— (καμία) —</option>
+          {% for h in headers %}
+          <option value="{{ loop.index0 }}" {{ 'selected' if guess.get(key)==loop.index0 }}>{{ h or ('Στήλη ' ~ loop.index) }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endfor %}
+      <div style="margin-top:18px; display:flex; gap:10px; align-items:center;">
+        <button class="btn" type="submit"><i class="ti ti-database-import"></i> Εισαγωγή {{ n_rows }} γραμμών</button>
+        <a class="btn ghost" href="/dashboard/imports?embed=1">Άκυρο</a>
+        <span class="muted">Ασφαλές να επαναληφθεί — οι ίδιες γραμμές δεν διπλασιάζονται.</span>
+      </div>
+    </div>
+  </form>
+
+  <div class="card">
+    <div class="card-title"><i class="ti ti-eye"></i> Προεπισκόπηση (πρώτες {{ preview|length }} γραμμές)</div>
+    <div class="prev-wrap">
+      <table class="prev">
+        <tr>{% for h in headers %}<th>{{ h or ('Στήλη ' ~ loop.index) }}</th>{% endfor %}</tr>
+        {% for row in preview %}
+        <tr>{% for h in headers %}<td>{{ row[loop.index0] if loop.index0 < row|length else '' }}</td>{% endfor %}</tr>
+        {% endfor %}
+      </table>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

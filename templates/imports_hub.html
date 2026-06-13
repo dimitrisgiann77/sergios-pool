@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Εστία — Κέντρο Εισαγωγής Δεδομένων</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<style>
+* { box-sizing:border-box; margin:0; padding:0; }
+body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background:#f0f7ff; color:#1a1a1a; }
+.topbar { background:#193847; color:white; padding:14px 24px; display:flex; align-items:center; justify-content:space-between; }
+.topbar-title { font-size:16px; font-weight:600; display:flex; align-items:center; gap:8px; }
+.container { max-width:1000px; margin:0 auto; padding:24px; }
+.intro { color:#64748b; font-size:13.5px; margin-bottom:18px; line-height:1.6; }
+.grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:16px; }
+.card { background:white; border-radius:14px; padding:18px; border:1px solid #e0f0ff; display:flex; flex-direction:column; }
+.card.soon { opacity:.72; }
+.card-h { display:flex; align-items:center; gap:10px; margin-bottom:6px; }
+.card-h .ic { width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:20px; color:#fff; }
+.card-t { font-size:15px; font-weight:700; color:#193847; }
+.card-s { font-size:12px; color:#94a3b8; }
+.badge { font-size:11px; font-weight:600; padding:3px 9px; border-radius:20px; background:#eef5f8; color:#475569; }
+.badge.live { background:#dcfce7; color:#16a34a; }
+.badge.soon { background:#fff7ed; color:#b45309; }
+.stat-row { display:flex; gap:10px; margin:12px 0; }
+.stat { flex:1; background:#f6fbff; border:1px solid #e0f0ff; border-radius:9px; padding:9px 11px; }
+.stat .n { font-size:20px; font-weight:700; color:#193847; }
+.stat .l { font-size:11px; color:#64748b; }
+.opt { border-top:1px solid #f0f4f7; padding-top:12px; margin-top:6px; }
+.opt-t { font-size:12.5px; font-weight:600; color:#334155; margin-bottom:7px; display:flex; align-items:center; gap:6px; }
+.btn { padding:9px 14px; border:none; border-radius:9px; font-size:13px; font-weight:600; cursor:pointer; background:#193847; color:#fff; display:inline-flex; align-items:center; gap:7px; text-decoration:none; }
+.btn.ghost { background:#eef5f8; color:#193847; }
+.file-row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+input[type=file] { font-size:12px; max-width:100%; }
+.muted { color:#9aa7ad; font-size:12px; }
+.recent { margin-top:24px; background:white; border-radius:14px; padding:18px; border:1px solid #e0f0ff; }
+.recent h3 { font-size:14px; color:#193847; margin-bottom:10px; }
+table { width:100%; border-collapse:collapse; font-size:13px; }
+td,th { padding:7px 6px; border-bottom:1px solid #f0f4f7; text-align:left; }
+th { color:#64748b; font-weight:600; font-size:11.5px; }
+.err { background:#fee2e2; color:#dc2626; padding:10px 14px; border-radius:9px; margin-bottom:14px; font-size:13px; }
+</style>
+<style>:root{--brand:{{ theme.primary if theme else '#193847' }};}.topbar{background:var(--brand)!important;}.btn{background:var(--brand)!important;}.btn.ghost{background:#eef5f8!important;color:var(--brand)!important;}</style>
+<script>try{if(new URLSearchParams(location.search).get("embed")==="1"){document.documentElement.classList.add("embed");}}catch(e){}</script>
+<style>.embed .topbar{display:none!important;}.embed body{background:transparent!important;}</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-title"><i class="ti ti-database-import"></i> ΕΣΤΙΑ — Κέντρο Εισαγωγής Δεδομένων</div>
+</div>
+<div class="container">
+  {% if request.args.get('err')=='nofile' %}<div class="err">Δεν επιλέχθηκε αρχείο.</div>{% endif %}
+  {% if request.args.get('err')=='parse' %}<div class="err">Δεν ήταν δυνατή η ανάγνωση του αρχείου (έλεγξε ότι είναι .xlsx ή .csv).</div>{% endif %}
+
+  <p class="intro">Από εδώ φορτώνεις δεδομένα από <b>πολλές πηγές</b> σε διαφορετικά module της Εστίας — είτε από <b>έτοιμα αρχεία</b> (π.χ. ιστορικά HotelToolbox) είτε ανεβάζοντας <b>δικό σου Excel/CSV</b> με αντιστοίχιση στηλών.</p>
+
+  <div class="grid">
+
+    <!-- ΒΛΑΒΕΣ -->
+    <div class="card">
+      <div class="card-h">
+        <div class="ic" style="background:#ef4444;"><i class="ti ti-alert-triangle"></i></div>
+        <div style="flex:1;"><div class="card-t">Βλάβες</div><div class="card-s">Module Βλαβοληψία</div></div>
+        <span class="badge live">Ενεργό</span>
+      </div>
+      <div class="stat-row">
+        <div class="stat"><div class="n">{{ ht_done }}</div><div class="l">από HotelToolbox</div></div>
+        <div class="stat"><div class="n">{{ upl_done }}</div><div class="l">από αρχεία</div></div>
+      </div>
+      <div class="opt">
+        <div class="opt-t"><i class="ti ti-history"></i> Ιστορικά HotelToolbox (έτοιμο αρχείο)</div>
+        <a class="btn ghost" href="/dashboard/faults/import?embed=1"><i class="ti ti-arrow-right"></i> Άνοιγμα ({{ ht_avail }} διαθέσιμες)</a>
+      </div>
+      <div class="opt">
+        <div class="opt-t"><i class="ti ti-file-upload"></i> Ανέβασμα Excel/CSV</div>
+        <form class="file-row" method="POST" action="/dashboard/imports/upload?embed=1" enctype="multipart/form-data">
+          <input type="hidden" name="target" value="faults">
+          <input type="file" name="file" accept=".xlsx,.xls,.csv,.tsv" required>
+          <button class="btn" type="submit"><i class="ti ti-upload"></i> Ανέβασμα</button>
+        </form>
+        <p class="muted" style="margin-top:6px;">Θα διαλέξεις ποια στήλη πάει σε ποιο πεδίο στο επόμενο βήμα.</p>
+      </div>
+    </div>
+
+    <!-- ΕΡΩΤΗΜΑΤΟΛΟΓΙΑ -->
+    <div class="card soon">
+      <div class="card-h">
+        <div class="ic" style="background:#0ea5e9;"><i class="ti ti-clipboard-check"></i></div>
+        <div style="flex:1;"><div class="card-t">Ερωτηματολόγια</div><div class="card-s">Module Υποδοχή</div></div>
+        <span class="badge soon">Σύντομα</span>
+      </div>
+      <p class="muted" style="margin-top:8px;">Εισαγωγή ιστορικών απαντήσεων (Asterias & 2023–2025) στη μηχανή ερωτηματολογίων. Επόμενο στη σειρά.</p>
+    </div>
+
+    <!-- ΠΑΡΑΠΟΝΑ / ΣΥΜΒΑΝΤΑ -->
+    <div class="card soon">
+      <div class="card-h">
+        <div class="ic" style="background:#f59e0b;"><i class="ti ti-message-report"></i></div>
+        <div style="flex:1;"><div class="card-t">Παράπονα / Συμβάντα</div><div class="card-s">Logbooks Υποδοχής</div></div>
+        <span class="badge soon">Σύντομα</span>
+      </div>
+      <p class="muted" style="margin-top:8px;">1.762 ιστορικά. Χρειάζεται πρώτα το αντίστοιχο board (Φάση Β).</p>
+    </div>
+
+  </div>
+
+  {% if recent %}
+  <div class="recent">
+    <h3>Πρόσφατα ανεβάσματα</h3>
+    <table>
+      <tr><th>Αρχείο</th><th>Στόχος</th><th>Γραμμές</th><th>Κατάσταση</th><th></th></tr>
+      {% for u in recent %}
+      <tr>
+        <td>{{ u.filename }}</td>
+        <td>{{ u.target }}</td>
+        <td>{{ u.n_rows }}</td>
+        <td>{% if u.status=='done' %}<span class="badge live">Ολοκληρώθηκε</span>{% else %}<span class="badge">Εκκρεμεί</span>{% endif %}</td>
+        <td style="text-align:right;">
+          {% if u.status!='done' %}<a class="btn ghost" href="/dashboard/imports/{{ u.id }}/map?embed=1" style="padding:5px 10px;"><i class="ti ti-arrows-split"></i> Αντιστοίχιση</a>{% endif %}
+          <form method="POST" action="/dashboard/imports/{{ u.id }}/delete?embed=1" style="display:inline;" onsubmit="return confirm('Διαγραφή ανεβάσματος;');"><button class="btn ghost" style="padding:5px 10px;" title="Διαγραφή"><i class="ti ti-trash"></i></button></form>
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+  {% endif %}
+
+</div>
+</body>
+</html>

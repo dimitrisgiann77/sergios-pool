@@ -314,8 +314,8 @@ def inject_theme():
     return {'theme': get_theme()}
 
 # έκδοση/build για το footer του shell
-APP_VERSION = '12.28'
-APP_BUILD   = '308'
+APP_VERSION = '12.29'
+APP_BUILD   = '309'
 
 @app.context_processor
 def inject_version():
@@ -2829,6 +2829,7 @@ def seed_team():
 
 import faults          # v12.14 — Module Βλαβοληψία (μοντέλα + routes)· ΠΡΙΝ το create_all
 import surveys         # v12.23 — Module Ερωτηματολόγια (μοντέλα + routes)· ΠΡΙΝ το create_all
+import imports         # v12.29 — Κέντρο Εισαγωγής Δεδομένων (μοντέλο ImportUpload + routes)· ΠΡΙΝ το create_all
 init_db()
 seed_team()
 faults.seed_faults()   # seed κατηγορίες/ειδικότητες/SLA (idempotent)
