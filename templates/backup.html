@@ -43,7 +43,7 @@ th { color:#64748b; font-weight:600; font-size:11.5px; }
 .kv b { color:#193847; }
 .danger { border-color:#fca5a5; }
 .danger .card-t { color:#dc2626; }
-input[type=file],input[type=text] { font-size:12px; padding:6px 8px; border:1px solid #cbd5e1; border-radius:7px; max-width:100%; }
+input[type=file],input[type=text],input[type=number] { font-size:12px; padding:6px 8px; border:1px solid #cbd5e1; border-radius:7px; max-width:100%; }
 </style>
 <style>:root{--brand:{{ theme.primary if theme else '#193847' }};}.topbar{background:var(--brand)!important;}.btn{background:var(--brand)!important;}.btn.ghost{background:#eef5f8!important;color:var(--brand)!important;}</style>
 <script>try{if(new URLSearchParams(location.search).get("embed")==="1"){document.documentElement.classList.add("embed");}}catch(e){}</script>
@@ -57,6 +57,7 @@ input[type=file],input[type=text] { font-size:12px; padding:6px 8px; border:1px 
 
   {% if request.args.get('msg')=='ok' %}<div class="ok">Το αντίγραφο δημιουργήθηκε και ανέβηκε στο SharePoint.</div>{% endif %}
   {% if request.args.get('msg')=='restored' %}<div class="ok">Η επαναφορά ολοκληρώθηκε.</div>{% endif %}
+  {% if request.args.get('msg')=='saved' %}<div class="ok">Οι ρυθμίσεις αποθηκεύτηκαν.</div>{% endif %}
   {% if request.args.get('err')=='cfg' %}<div class="err">Δεν έχει ρυθμιστεί ο προορισμός (Graph + SharePoint env vars).</div>{% endif %}
   {% if request.args.get('err')=='err' %}<div class="err">Το backup απέτυχε — δες το ιστορικό παρακάτω για το μήνυμα σφάλματος.</div>{% endif %}
   {% if request.args.get('err')=='confirm' %}<div class="err">Λάθος επιβεβαίωση. Πληκτρολόγησε ακριβώς: ΕΠΑΝΑΦΟΡΑ</div>{% endif %}
@@ -93,20 +94,31 @@ input[type=file],input[type=text] { font-size:12px; padding:6px 8px; border:1px 
       </div>
     </div>
 
-    <!-- ΡΥΘΜΙΣΕΙΣ / ΧΡΟΝΟΔΙΑΓΡΑΜΜΑ -->
+    <!-- ΡΥΘΜΙΣΕΙΣ / ΧΡΟΝΟΔΙΑΓΡΑΜΜΑ (επεξεργάσιμο από το UI) -->
     <div class="card">
       <div class="card-h">
         <div class="ic" style="background:#16a34a;"><i class="ti ti-clock-cog"></i></div>
-        <div style="flex:1;"><div class="card-t">Αυτόματο πρόγραμμα</div><div class="card-s">Ημερήσιο backup</div></div>
+        <div style="flex:1;"><div class="card-t">Αυτόματο πρόγραμμα</div><div class="card-s">Ρυθμίσεις backup</div></div>
         {% if enabled %}<span class="badge live">Ενεργό</span>{% else %}<span class="badge off">Ανενεργό</span>{% endif %}
       </div>
-      <div class="kv" style="margin-top:8px;">
-        <div>Ώρα: <b>{{ '%02d:00'|format(hour) }}</b> (Ελλάδας)</div>
-        <div>Διατήρηση: <b>τελευταία {{ keep }}</b> αρχεία</div>
+      <form method="POST" action="/dashboard/backup/settings?embed=1">
+        <label style="display:flex;align-items:center;gap:8px;margin:10px 0 12px;font-size:13px;color:#334155;font-weight:600;">
+          <input type="checkbox" name="enabled" value="1" {% if enabled %}checked{% endif %}> Αυτόματο backup ενεργό
+        </label>
+        <div style="margin-bottom:10px;font-size:12.5px;color:#334155;">Ώρες (Ελλάδας, με κόμμα):<br>
+          <input type="text" name="hours" value="{{ hours_raw }}" placeholder="3,15" style="width:120px;margin-top:4px;">
+          <div class="muted" style="margin-top:3px;">τώρα: {{ hours_str }}</div>
+        </div>
+        <div style="margin-bottom:12px;font-size:12.5px;color:#334155;">Διατήρηση (πόσα αρχεία κρατάμε):<br>
+          <input type="number" name="keep" value="{{ keep }}" min="1" max="365" style="width:80px;margin-top:4px;">
+        </div>
+        <button class="btn" type="submit"><i class="ti ti-device-floppy"></i> Αποθήκευση ρυθμίσεων</button>
+      </form>
+      <div class="kv" style="margin-top:12px;border-top:1px solid #f0f4f7;padding-top:10px;">
         <div>Microsoft Graph: {% if graph_ok %}<b style="color:#16a34a;">συνδεδεμένο</b>{% else %}<b style="color:#dc2626;">όχι</b>{% endif %}</div>
         <div>Προορισμός: <b>{{ sp_host or '—' }}{{ sp_site }}</b> / <b>{{ sp_folder }}</b></div>
+        <div>Έκδοση: <b>v{{ app_version }} · build {{ app_build }}</b></div>
       </div>
-      <p class="muted" style="margin-top:10px;">Ρυθμίζεται με env vars στο Railway: <b>BACKUP_ENABLED</b>, <b>BACKUP_HOUR</b>, <b>BACKUP_KEEP</b>.</p>
     </div>
 
   </div>
@@ -135,7 +147,7 @@ input[type=file],input[type=text] { font-size:12px; padding:6px 8px; border:1px 
   <div class="recent">
     <h3>Ιστορικό backup</h3>
     <table>
-      <tr><th>Αρχείο</th><th>Κατάσταση</th><th>Πίνακες</th><th>Γραμμές</th><th>Μέγεθος</th><th>Πότε</th></tr>
+      <tr><th>Αρχείο</th><th>Κατάσταση</th><th>Πίνακες</th><th>Γραμμές</th><th>Μέγεθος</th><th>Έκδοση</th><th>Πότε</th></tr>
       {% for b in recent %}
       <tr>
         <td>{{ b.filename }}</td>
@@ -147,6 +159,7 @@ input[type=file],input[type=text] { font-size:12px; padding:6px 8px; border:1px 
         <td>{{ b.n_tables }}</td>
         <td>{{ b.n_rows }}</td>
         <td>{{ (b.size_bytes or 0)//1024 }} KB</td>
+        <td>{% if b.app_version %}v{{ b.app_version }}·{{ b.app_build }}{% else %}—{% endif %}</td>
         <td>{{ b.created_at.strftime('%d/%m %H:%M') }}</td>
       </tr>
       {% endfor %}

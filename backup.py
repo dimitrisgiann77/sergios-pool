@@ -1,46 +1,41 @@
 # -*- coding: utf-8 -*-
 """
-Εστία — Module Αντιγράφων Ασφαλείας (Backups) — v12.31
+Εστία — Module Αντιγράφων Ασφαλείας (Backups) — v12.33
 ======================================================
 Plug-in (όπως faults.py/surveys.py/imports.py): import από το ΤΕΛΟΣ του app.py,
-ΠΡΙΝ το init_db().
+ΠΡΙΝ το init_db(). Μετά το init_db() καλείται το backup.ensure_backup_columns().
 
 ΣΤΡΑΤΗΓΙΚΗ (Δρόμος Α — off-site, ανεξάρτητο από το Railway):
-  Το schema της Εστίας το φτιάχνει ο ίδιος ο κώδικας σε κάθε boot
-  (create_all + ensure_columns). Άρα το backup κρατά ΜΟΝΟ δεδομένα.
-  Dump όλων των πινάκων -> συμπιεσμένο JSON (.json.gz) που πιάνει τα πάντα
-  (μετρήσεις, βλάβες, ερωτηματολόγια ΚΑΙ τις base64 εικόνες/avatars/logos).
-  Καθαρό Python (psycopg2 μέσω SQLAlchemy) — ΚΑΝΕΝΑ pg_dump binary, καμία
-  εξάρτηση από έκδοση client/server.
+  Το schema το φτιάχνει ο κώδικας σε κάθε boot → το backup κρατά ΜΟΝΟ δεδομένα.
+  Dump όλων των πινάκων -> συμπιεσμένο JSON (.json.gz) με τα πάντα (μετρήσεις,
+  βλάβες, ερωτηματολόγια ΚΑΙ base64 εικόνες/avatars/logos). Καθαρό Python — χωρίς
+  pg_dump binary. Προορισμός: εταιρικό SharePoint μέσω Microsoft Graph.
 
-ΠΡΟΟΡΙΣΜΟΣ: εταιρικό SharePoint μέσω Microsoft Graph, με τα ΙΔΙΑ app-only
-  credentials που χρησιμοποιεί ήδη το email (GRAPH_TENANT_ID/CLIENT_ID/SECRET).
-  Απαιτείται στο Azure app registration το permission **Sites.ReadWrite.All**
-  (application) + admin consent.
-
-RESTORE: fresh boot (φτιάχνει πίνακες) + φόρτωση του dump (masteradmin,
-  με ρητή επιβεβαίωση). Βλ. /dashboard/backup.
+ΡΥΘΜΙΣΕΙΣ (v12.33): enabled / ώρες / διατήρηση αποθηκεύονται στη ΒΑΣΗ (Setting) και
+  ρυθμίζονται από το UI — αλλάζουν ΧΩΡΙΣ redeploy. Τα env vars χρησιμεύουν μόνο ως
+  αρχικές προεπιλογές (seed). Default: 2 φορές/μέρα (03:00 & 15:00), κράτα 30.
+  Τα GRAPH_*/SP_* (secrets/προορισμός) παραμένουν env.
 """
 import os, io, gzip, json, base64, threading, time, datetime as _dt, urllib.request, urllib.parse
 from decimal import Decimal
 from flask import request, redirect, url_for, render_template, session, Response
 
 from app import (app, db, current_user, is_admin, has_rank, ROLE_RANK, log_activity, Setting,
-                 _graph_token, GRAPH_CLIENT_ID, _athens_now, APP_VERSION)
+                 _graph_token, GRAPH_CLIENT_ID, _athens_now, APP_VERSION, APP_BUILD, _add_col)
 
 
 def is_master():
     return has_rank(ROLE_RANK['masteradmin'])
 
-# ── Ρυθμίσεις (env) ───────────────────────────────────────────────────────────
-BACKUP_ENABLED = os.environ.get('BACKUP_ENABLED', 'false').lower() in ('1', 'true', 'yes', 'on')
-BACKUP_HOUR    = int(os.environ.get('BACKUP_HOUR', '3'))        # ώρα ημερήσιου backup (Europe/Athens)
-BACKUP_KEEP    = int(os.environ.get('BACKUP_KEEP', '30'))       # πόσα αρχεία κρατάμε στο SharePoint
+# ── Αρχικές προεπιλογές (env seed — μετά ρυθμίζονται από το UI/βάση) ───────────
+ENV_ENABLED = os.environ.get('BACKUP_ENABLED', 'false').lower() in ('1', 'true', 'yes', 'on')
+ENV_HOURS   = os.environ.get('BACKUP_HOURS', '') or os.environ.get('BACKUP_HOUR', '')  # συμβατότητα
+ENV_KEEP    = os.environ.get('BACKUP_KEEP', '30')
 
-# SharePoint target (μέσω Graph)
-SP_HOST       = os.environ.get('SP_HOST', '')                  # π.χ. condianhotels.sharepoint.com
-SP_SITE_PATH  = os.environ.get('SP_SITE_PATH', '')             # π.χ. /sites/Estia
-SP_FOLDER     = os.environ.get('SP_FOLDER', 'Estia-Backups')   # φάκελος στη βιβλιοθήκη εγγράφων
+# SharePoint target (env)
+SP_HOST       = os.environ.get('SP_HOST', '')
+SP_SITE_PATH  = os.environ.get('SP_SITE_PATH', '')
+SP_FOLDER     = os.environ.get('SP_FOLDER', 'Estia-Backups')
 
 _SITE_ID_CACHE = {'v': None}
 
@@ -49,11 +44,13 @@ _SITE_ID_CACHE = {'v': None}
 class BackupLog(db.Model):
     id          = db.Column(db.Integer, primary_key=True)
     filename    = db.Column(db.String(200))
-    status      = db.Column(db.String(16), default='running')   # running/done/error
+    status      = db.Column(db.String(16), default='running')
     n_tables    = db.Column(db.Integer, default=0)
     n_rows      = db.Column(db.Integer, default=0)
     size_bytes  = db.Column(db.Integer, default=0)
-    destination = db.Column(db.String(20), default='sharepoint') # sharepoint/local
+    destination = db.Column(db.String(20), default='sharepoint')
+    app_version = db.Column(db.String(10))
+    app_build   = db.Column(db.String(10))
     sp_item_id  = db.Column(db.String(200))
     sp_url      = db.Column(db.Text)
     error       = db.Column(db.Text)
@@ -61,7 +58,66 @@ class BackupLog(db.Model):
     created_at  = db.Column(db.DateTime, default=_dt.datetime.utcnow)
 
 
-# ── Serialization (fidelity για datetime/bytes/Decimal) ───────────────────────
+def ensure_backup_columns():
+    """Auto-migration νέων στηλών + seed προεπιλογών ρυθμίσεων (idempotent).
+    Καλείται από το app.py ΜΕΤΑ το init_db()."""
+    with app.app_context():
+        try:
+            _add_col('backup_log', 'app_version', 'app_version VARCHAR(10)')
+            _add_col('backup_log', 'app_build', 'app_build VARCHAR(10)')
+        except Exception as e:
+            db.session.rollback(); print('[backup] ensure cols skipped:', e)
+        # seed ρυθμίσεων αν λείπουν (πρώτη φορά)
+        try:
+            if Setting.query.get('backup_enabled') is None:
+                _setput('enabled', '1' if ENV_ENABLED else '0')
+            if Setting.query.get('backup_hours') is None:
+                _setput('hours', ENV_HOURS or '3,15')   # default 2 φορές/μέρα
+            if Setting.query.get('backup_keep') is None:
+                _setput('keep', ENV_KEEP or '30')
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback(); print('[backup] seed settings skipped:', e)
+
+
+# ── Ρυθμίσεις από τη βάση (Setting) ───────────────────────────────────────────
+def _setget(key, default=''):
+    s = Setting.query.get('backup_' + key)
+    return s.value if (s and s.value is not None) else default
+
+def _setput(key, val):
+    s = Setting.query.get('backup_' + key)
+    if s:
+        s.value = str(val)
+    else:
+        db.session.add(Setting(key='backup_' + key, value=str(val)))
+
+def get_enabled():
+    v = _setget('enabled', '')
+    if v == '':
+        return ENV_ENABLED
+    return v.lower() in ('1', 'true', 'yes', 'on')
+
+def get_hours():
+    v = _setget('hours', '') or ENV_HOURS or '3,15'
+    hrs = []
+    for p in v.replace(' ', '').split(','):
+        if p.isdigit() and 0 <= int(p) <= 23:
+            hrs.append(int(p))
+    return sorted(set(hrs)) or [3]
+
+def get_keep():
+    v = _setget('keep', '') or ENV_KEEP
+    try:
+        return int(v)
+    except Exception:
+        return 30
+
+def hours_str():
+    return ', '.join('%02d:00' % h for h in get_hours())
+
+
+# ── Serialization ─────────────────────────────────────────────────────────────
 def _enc(v):
     if v is None or isinstance(v, (bool, int, float, str)):
         return v
@@ -74,7 +130,6 @@ def _enc(v):
     if isinstance(v, Decimal):
         return {'__dec__': str(v)}
     return str(v)
-
 
 def _dec(v):
     if isinstance(v, dict) and len(v) == 1:
@@ -97,10 +152,10 @@ def _dec(v):
 
 def dump_bytes():
     """Όλους τους πίνακες -> gzipped JSON bytes. Σειρά FK-safe (sorted_tables)."""
-    tables = list(db.metadata.sorted_tables)   # parents πριν children
+    tables = list(db.metadata.sorted_tables)
     out = {'estia_backup': 1,
            'created_utc': _dt.datetime.utcnow().isoformat(),
-           'app_version': APP_VERSION,
+           'app_version': APP_VERSION, 'app_build': APP_BUILD,
            'dialect': (db.engine.dialect.name if db.engine is not None else ''),
            'tables': []}
     total_rows = 0
@@ -116,7 +171,12 @@ def dump_bytes():
     return gz, len(tables), total_rows
 
 
-# ── Microsoft Graph (SharePoint upload/list/delete) ───────────────────────────
+def _backup_filename():
+    ts = _athens_now().strftime('%Y%m%d-%H%M%S')
+    return 'estia-backup-v%s-b%s-%s.json.gz' % (APP_VERSION, APP_BUILD, ts)
+
+
+# ── Microsoft Graph (SharePoint) ──────────────────────────────────────────────
 def _graph(method, url, data=None, token=None, ctype='application/json'):
     token = token or _graph_token()
     headers = {'Authorization': 'Bearer ' + token}
@@ -126,7 +186,6 @@ def _graph(method, url, data=None, token=None, ctype='application/json'):
     with urllib.request.urlopen(req, timeout=120) as r:
         body = r.read()
         return r.status, (json.loads(body.decode()) if body else {})
-
 
 def _site_id(token):
     if _SITE_ID_CACHE['v']:
@@ -138,16 +197,13 @@ def _site_id(token):
     _SITE_ID_CACHE['v'] = j['id']
     return j['id']
 
-
 def sp_upload(filename, content):
-    """Simple upload (<250MB) στον φάκελο SP_FOLDER της βιβλιοθήκης του site."""
     token = _graph_token()
     sid = _site_id(token)
     path = urllib.parse.quote('%s/%s' % (SP_FOLDER.strip('/'), filename))
     url = 'https://graph.microsoft.com/v1.0/sites/%s/drive/root:/%s:/content' % (sid, path)
     st, j = _graph('PUT', url, data=content, token=token, ctype='application/octet-stream')
     return j.get('id'), j.get('webUrl')
-
 
 def sp_list(token=None):
     token = token or _graph_token()
@@ -165,21 +221,19 @@ def sp_list(token=None):
         print('[backup] sp_list error:', e)
         return []
 
-
 def sp_delete(item_id, token=None):
     token = token or _graph_token()
     sid = _site_id(token)
     url = 'https://graph.microsoft.com/v1.0/sites/%s/drive/items/%s' % (sid, item_id)
     _graph('DELETE', url, token=token)
 
-
 def _retention():
-    """Κράτα μόνο τα BACKUP_KEEP πιο πρόσφατα αρχεία με πρόθεμα estia-backup-."""
-    if BACKUP_KEEP <= 0:
+    keep = get_keep()
+    if keep <= 0:
         return
     items = [x for x in sp_list() if (x.get('name') or '').startswith('estia-backup-')]
     items.sort(key=lambda x: x.get('createdDateTime', ''), reverse=True)
-    for old in items[BACKUP_KEEP:]:
+    for old in items[keep:]:
         try:
             sp_delete(old['id'])
         except Exception as e:
@@ -188,10 +242,9 @@ def _retention():
 
 # ── Orchestration ─────────────────────────────────────────────────────────────
 def run_backup(by_user_id=None):
-    """Πλήρης ροή: dump -> upload SharePoint -> log -> retention. Επιστρέφει BackupLog."""
-    ts = _athens_now().strftime('%Y%m%d-%H%M%S')
-    fname = 'estia-backup-%s.json.gz' % ts
-    rec = BackupLog(filename=fname, status='running', by_user_id=by_user_id)
+    fname = _backup_filename()
+    rec = BackupLog(filename=fname, status='running', by_user_id=by_user_id,
+                    app_version=APP_VERSION, app_build=APP_BUILD)
     db.session.add(rec); db.session.commit()
     try:
         gz, n_tables, n_rows = dump_bytes()
@@ -214,44 +267,41 @@ def run_backup(by_user_id=None):
     return rec
 
 
-# ── Scheduler (ημερήσιο, lock μέσω Setting για τους 2 workers) ────────────────
+# ── Scheduler (πολλαπλές ώρες, lock ανά slot μέρα+ώρα) ─────────────────────────
 def _backup_tick():
     with app.app_context():
-        now = _athens_now()
-        if now.hour != BACKUP_HOUR:
+        if not get_enabled():
             return
-        day = now.strftime('%Y-%m-%d')
-        key = 'backup_last_day'
-        s = Setting.query.get(key)
-        if s and s.value == day:
+        now = _athens_now()
+        if now.hour not in get_hours():
+            return
+        slot = now.strftime('%Y-%m-%d %H')
+        s = Setting.query.get('backup_last_slot')
+        if s and s.value == slot:
             return
         try:
             if s:
-                s.value = day
+                s.value = slot
             else:
-                db.session.add(Setting(key=key, value=day))
+                db.session.add(Setting(key='backup_last_slot', value=slot))
             db.session.commit()
         except Exception:
             db.session.rollback(); return   # άλλος worker το ανέλαβε
         run_backup(by_user_id=None)
 
-
 def _backup_loop():
-    time.sleep(90)   # να προλάβει το init_db
+    time.sleep(90)
     while True:
         try:
             _backup_tick()
         except Exception as e:
             print('[backup] loop error:', e)
-        time.sleep(1800)   # κάθε 30 λεπτά ελέγχει την ώρα
-
+        time.sleep(900)   # έλεγχος κάθε 15 λεπτά
 
 def start_backup_scheduler():
-    if BACKUP_ENABLED:
-        threading.Thread(target=_backup_loop, daemon=True).start()
-        print('[backup] scheduler started (ώρα %02d:00, keep %d)' % (BACKUP_HOUR, BACKUP_KEEP))
-    else:
-        print('[backup] scheduler off (BACKUP_ENABLED=false)')
+    # ξεκινά πάντα· το enabled ελέγχεται δυναμικά (UI) σε κάθε tick
+    threading.Thread(target=_backup_loop, daemon=True).start()
+    print('[backup] scheduler thread started (έλεγχος δυναμικών ρυθμίσεων από βάση)')
 
 
 # ── Routes (admin) ────────────────────────────────────────────────────────────
@@ -270,8 +320,24 @@ def backup_hub():
                            recent=recent, last_ok=last_ok, remote=remote,
                            cfg_ok=_config_ok(), graph_ok=bool(GRAPH_CLIENT_ID),
                            sp_host=SP_HOST, sp_site=SP_SITE_PATH, sp_folder=SP_FOLDER,
-                           enabled=BACKUP_ENABLED, hour=BACKUP_HOUR, keep=BACKUP_KEEP,
+                           enabled=get_enabled(), hours_str=hours_str(),
+                           hours_raw=_setget('hours', '') or ENV_HOURS or '3,15',
+                           keep=get_keep(), app_version=APP_VERSION, app_build=APP_BUILD,
                            is_master=is_master())
+
+
+@app.route('/dashboard/backup/settings', methods=['POST'])
+def backup_settings():
+    if not is_admin():
+        return redirect(url_for('login'))
+    _setput('enabled', '1' if request.form.get('enabled') else '0')
+    hrs = (request.form.get('hours') or '').strip()
+    _setput('hours', hrs or '3,15')
+    keep = (request.form.get('keep') or '').strip()
+    _setput('keep', keep if keep.isdigit() else '30')
+    db.session.commit()
+    log_activity('backup_settings', 'ώρες=%s keep=%s on=%s' % (hrs, keep, bool(request.form.get('enabled'))))
+    return redirect(url_for('backup_hub') + '?embed=1&msg=saved')
 
 
 @app.route('/dashboard/backup/run', methods=['POST'])
@@ -288,20 +354,16 @@ def backup_run():
 
 @app.route('/dashboard/backup/download', methods=['POST'])
 def backup_download():
-    """Κατέβασμα τοπικού αντιγράφου (δεν ανεβαίνει στο SharePoint) — χρήσιμο για χειροκίνητο off-site."""
     if not is_admin():
         return redirect(url_for('login'))
     gz, _, _ = dump_bytes()
-    fname = 'estia-backup-%s.json.gz' % _athens_now().strftime('%Y%m%d-%H%M%S')
-    log_activity('backup_download', fname)
+    log_activity('backup_download', _backup_filename())
     return Response(gz, mimetype='application/gzip',
-                    headers={'Content-Disposition': 'attachment; filename=%s' % fname})
+                    headers={'Content-Disposition': 'attachment; filename=%s' % _backup_filename()})
 
 
 @app.route('/dashboard/backup/restore', methods=['POST'])
 def backup_restore():
-    """RESTORE από ανεβασμένο .json.gz. ΚΙΝΔΥΝΟΣ: αντικαθιστά δεδομένα.
-    masteradmin + ρητή επιβεβαίωση ('ΕΠΑΝΑΦΟΡΑ')."""
     if not is_master():
         return redirect(url_for('login'))
     if (request.form.get('confirm') or '').strip().upper() != 'ΕΠΑΝΑΦΟΡΑ':
