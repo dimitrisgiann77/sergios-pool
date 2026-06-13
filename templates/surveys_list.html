@@ -1,0 +1,73 @@
+{% import '_monitoring.html' as mp %}
+<!DOCTYPE html>
+<html lang="el">
+<head>
+{{ mp.head('Ερωτηματολόγια', theme.primary) }}
+<style>
+.newform{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+.newform input,.newform select{padding:9px 11px;border:1px solid #d6eef3;border-radius:8px;font-size:14px;}
+.act-link{font-size:12px;text-decoration:none;color:var(--mp-brand);font-weight:600;margin-right:10px;white-space:nowrap;}
+.act-link.danger{color:#dc2626;}
+.pill{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;}
+</style>
+</head>
+<body>
+{{ mp.topbar('clipboard-check', 'ΕΣΤΙΑ — Ερωτηματολόγια', rows|length ~ ' ερωτηματολόγια') }}
+<div class="container">
+
+  {% set kcards = [
+    {'n': kpi.active,    'label': 'Ενεργά',     'color': '#16a34a', 'href': '#', 'active': false},
+    {'n': kpi.total,     'label': 'Σύνολο',     'color': '#193847', 'href': '#', 'active': false},
+    {'n': kpi.responses, 'label': 'Απαντήσεις', 'color': '#185FA5', 'href': '#', 'active': false},
+    {'n': kpi.today,     'label': 'Σήμερα',     'color': '#b45309', 'href': '#', 'active': false},
+  ] %}
+  {{ mp.kpis(kcards) }}
+
+  <div class="card">
+    <div style="font-weight:700;color:#193847;margin-bottom:10px;font-size:14px;"><i class="ti ti-plus"></i> Νέο ερωτηματολόγιο</div>
+    <form class="newform" method="POST" action="/dashboard/surveys/new?embed=1">
+      <input type="text" name="title" placeholder="Τίτλος ερωτηματολογίου" style="min-width:240px;" required>
+      <select name="audience"><option value="πελάτες">Πελάτες</option><option value="προσωπικό">Προσωπικό</option></select>
+      <button class="btn" type="submit"><i class="ti ti-arrow-right"></i> Δημιουργία & επεξεργασία</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <div style="overflow-x:auto;">
+    <table>
+      <thead><tr><th>Τίτλος</th><th>Κοινό</th><th>Ξενοδοχείο</th><th>Ερωτ.</th><th>Απαντ.</th><th>NPS</th><th>Μ.Ο.</th><th>Κατάσταση</th><th>Ενέργειες</th></tr></thead>
+      <tbody>
+      {% for r in rows %}
+        <tr>
+          <td><a class="code" href="/dashboard/survey/{{ r.s.id }}/edit?embed=1">{{ r.s.title }}</a></td>
+          <td class="muted">{{ r.s.audience }}</td>
+          <td class="muted">{{ r.s.hotel.name if r.s.hotel else 'Όλα' }}</td>
+          <td>{{ r.questions }}</td>
+          <td><b>{{ r.responses }}</b></td>
+          <td>{% if r.nps is not none %}{{ mp.badge(r.nps, '#dcfce7' if r.nps>=0 else '#fee2e2', '#16a34a' if r.nps>=0 else '#dc2626') }}{% else %}<span class="muted">—</span>{% endif %}</td>
+          <td>{% if r.avg is not none %}⭐ {{ r.avg }}{% else %}<span class="muted">—</span>{% endif %}</td>
+          <td>{% if r.s.is_active %}<span class="pill" style="background:#dcfce7;color:#16a34a;">Ενεργό</span>{% else %}<span class="pill" style="background:#f1f5f9;color:#64748b;">Ανενεργό</span>{% endif %}</td>
+          <td style="white-space:nowrap;">
+            <a class="act-link" href="/dashboard/survey/{{ r.s.id }}/results?embed=1"><i class="ti ti-chart-bar"></i> Αποτελέσματα</a>
+            <a class="act-link" href="/dashboard/survey/{{ r.s.id }}/edit?embed=1"><i class="ti ti-edit"></i> Επεξεργασία</a>
+            <a class="act-link" href="#" onclick="copyLink('{{ r.s.token }}');return false;"><i class="ti ti-link"></i> Σύνδεσμος</a>
+            <form method="POST" action="/dashboard/survey/{{ r.s.id }}/toggle?embed=1" style="display:inline;"><button class="act-link" style="background:none;border:none;cursor:pointer;" type="submit">{{ 'Απενεργοπ.' if r.s.is_active else 'Ενεργοπ.' }}</button></form>
+            <form method="POST" action="/dashboard/survey/{{ r.s.id }}/delete?embed=1" style="display:inline;" onsubmit="return confirm('Διαγραφή ερωτηματολογίου & απαντήσεων;');"><button class="act-link danger" style="background:none;border:none;cursor:pointer;" type="submit"><i class="ti ti-trash"></i></button></form>
+          </td>
+        </tr>
+      {% endfor %}
+      {% if not rows %}<tr><td colspan="9" style="text-align:center;color:#aaa;padding:24px;">Κανένα ερωτηματολόγιο — φτιάξε το πρώτο πιο πάνω</td></tr>{% endif %}
+      </tbody>
+    </table>
+    </div>
+  </div>
+</div>
+<script>
+function copyLink(tok){
+  var url=location.origin+'/s/'+tok;
+  navigator.clipboard.writeText(url).then(function(){ alert('Ο δημόσιος σύνδεσμος αντιγράφηκε:\n'+url); },
+    function(){ prompt('Δημόσιος σύνδεσμος:', url); });
+}
+</script>
+</body>
+</html>

@@ -208,6 +208,10 @@ html[data-theme="dark"] .eai-panel{background:#141d2a;border-color:#243140;}
       <div class="item" data-ws="operations" data-url="/fault?embed=1"><i class="ti ti-tool"></i> Δήλωση βλάβης</div>
       {% if can_log %}<div class="item" data-ws="operations" data-url="/areas?embed=1"><i class="ti ti-checklist"></i> Καταγραφή τομέων</div>{% endif %}
       <div class="item" data-ws="operations" data-url="/areas/dashboard?embed=1"><i class="ti ti-clipboard-list"></i> Πίνακας τομέων</div>
+      {% if is_admin %}
+      <div class="grp" data-ws="operations admin">Υποδοχή</div>
+      <div class="item" data-ws="operations admin" data-url="/dashboard/surveys?embed=1"><i class="ti ti-clipboard-check"></i> Ερωτηματολόγια</div>
+      {% endif %}
       <div class="grp" data-ws="operations admin">Γενικά</div>
       <div class="item" data-ws="operations admin" data-url="/profile?embed=1"><i class="ti ti-user"></i> Το προφίλ μου</div>
       {% if is_admin %}

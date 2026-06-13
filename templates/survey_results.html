@@ -1,0 +1,81 @@
+{% import '_monitoring.html' as mp %}
+<!DOCTYPE html>
+<html lang="el">
+<head>
+{{ mp.head('Αποτελέσματα', theme.primary) }}
+<style>
+.qblock{margin-bottom:16px;}
+.qtitle{font-weight:700;color:#193847;font-size:15px;margin-bottom:2px;}
+.qsub{font-size:11px;color:#8aa0aa;margin-bottom:10px;}
+.bar-row{display:flex;align-items:center;gap:10px;margin-bottom:7px;}
+.bar-row .lab{width:120px;font-size:12px;color:#445;text-align:right;flex-shrink:0;}
+.bar-row .track{flex:1;background:#f0f7ff;border-radius:6px;height:22px;overflow:hidden;}
+.bar-row .fill{height:100%;background:linear-gradient(90deg,var(--mp-brand),#3b6e86);border-radius:6px;min-width:2px;}
+.bar-row .cnt{width:42px;font-size:12px;font-weight:700;color:#193847;}
+.npsbig{font-size:40px;font-weight:800;line-height:1;}
+.nps-seg{display:flex;height:14px;border-radius:7px;overflow:hidden;margin:10px 0;}
+.txtlist{max-height:280px;overflow:auto;}
+.txtitem{background:#f7fbff;border:1px solid #e8f1f6;border-radius:8px;padding:9px 11px;margin-bottom:7px;font-size:13px;color:#334;}
+</style>
+</head>
+<body>
+{{ mp.topbar('chart-bar', 'ΕΣΤΙΑ — ' ~ s.title, 'Αποτελέσματα · ' ~ n ~ ' απαντήσεις') }}
+<div class="container">
+  <div style="margin-bottom:12px;">
+    <a class="btn" href="/dashboard/surveys?embed=1" style="background:#64748b;"><i class="ti ti-arrow-left"></i> Πίσω</a>
+    <a class="btn" href="/dashboard/survey/{{ s.id }}/edit?embed=1"><i class="ti ti-edit"></i> Επεξεργασία</a>
+    <a class="btn" href="/dashboard/survey/{{ s.id }}/export.csv" style="background:#475569;"><i class="ti ti-file-type-csv"></i> Εξαγωγή CSV</a>
+  </div>
+
+  {% set kcards = [
+    {'n': n,                          'label': 'Απαντήσεις', 'color': '#193847', 'href':'#','active':false},
+    {'n': (nps if nps is not none else '—'), 'label': 'NPS', 'color': ('#16a34a' if (nps is not none and nps>=0) else '#dc2626'), 'href':'#','active':false},
+    {'n': (avg if avg is not none else '—'), 'label': 'Μ.Ο. βαθμολογίας', 'color': '#b45309','href':'#','active':false},
+  ] %}
+  {{ mp.kpis(kcards) }}
+
+  <div class="card">
+  {% if n == 0 %}
+    <div class="muted" style="text-align:center;padding:30px;">Δεν υπάρχουν ακόμα απαντήσεις. Μοιράσου τον δημόσιο σύνδεσμο για να ξεκινήσουν να έρχονται.</div>
+  {% endif %}
+  {% for b in blocks %}
+    <div class="qblock">
+      <div class="qtitle">{{ loop.index }}. {{ b.q.text }}</div>
+      <div class="qsub">{{ QTYPE_LABELS[b.type] }} · {{ b.count }} απαντήσεις</div>
+
+      {% if b.type == 'rating' %}
+        <div style="font-size:13px;color:#445;margin-bottom:8px;">Μέσος όρος: <b>{{ b.avg if b.avg is not none else '—' }}</b> / 5</div>
+        {% for k in [5,4,3,2,1] %}
+        <div class="bar-row"><div class="lab">{{ k }} ⭐</div><div class="track"><div class="fill" style="width:{{ (b.dist[k-1] / b.max * 100) if b.max else 0 }}%;"></div></div><div class="cnt">{{ b.dist[k-1] }}</div></div>
+        {% endfor %}
+
+      {% elif b.type == 'nps' %}
+        {% if b.nps is not none %}
+        <div class="npsbig" style="color:{{ '#16a34a' if b.nps>=0 else '#dc2626' }};">{{ b.nps }}</div>
+        <div class="nps-seg">
+          <div style="background:#16a34a;width:{{ (b.pro/b.n*100) if b.n else 0 }}%;"></div>
+          <div style="background:#f1c40f;width:{{ (b.pas/b.n*100) if b.n else 0 }}%;"></div>
+          <div style="background:#dc2626;width:{{ (b.det/b.n*100) if b.n else 0 }}%;"></div>
+        </div>
+        <div class="muted" style="font-size:12px;">Υποστηρικτές {{ b.pro }} · Ουδέτεροι {{ b.pas }} · Επικριτές {{ b.det }}</div>
+        {% else %}<div class="muted">Καμία απάντηση</div>{% endif %}
+
+      {% elif b.type in ['choice','yesno'] %}
+        {% for opt, cnt in b.counts.items() %}
+        <div class="bar-row"><div class="lab">{{ opt }}</div><div class="track"><div class="fill" style="width:{{ (cnt / b.max * 100) if b.max else 0 }}%;"></div></div><div class="cnt">{{ cnt }}</div></div>
+        {% endfor %}
+        {% if not b.counts %}<div class="muted">Καμία απάντηση</div>{% endif %}
+
+      {% else %}
+        <div class="txtlist">
+        {% for t in b.texts %}<div class="txtitem">{{ t }}</div>{% endfor %}
+        {% if not b.texts %}<div class="muted">Κανένα σχόλιο</div>{% endif %}
+        </div>
+      {% endif %}
+    </div>
+    {% if not loop.last %}<hr style="border:0;border-top:1px solid #f0f4f7;margin:14px 0;">{% endif %}
+  {% endfor %}
+  </div>
+</div>
+</body>
+</html>

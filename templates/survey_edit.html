@@ -1,0 +1,85 @@
+{% import '_monitoring.html' as mp %}
+<!DOCTYPE html>
+<html lang="el">
+<head>
+{{ mp.head('Επεξεργασία ερωτηματολογίου', theme.primary) }}
+<style>
+label{display:block;font-size:12px;color:#555;margin:10px 0 5px;font-weight:600;}
+input[type=text],textarea,select{width:100%;padding:10px 12px;border:1px solid #d6eef3;border-radius:9px;font-size:14px;font-family:inherit;}
+textarea{min-height:70px;resize:vertical;}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.qrow{display:flex;align-items:center;gap:10px;padding:11px;border:1px solid #e8f1f6;border-radius:9px;margin-bottom:8px;background:#fff;}
+.qrow .qt{flex:1;}
+.qrow .qt .qx{font-weight:600;font-size:14px;}
+.qrow .qt .qm{font-size:11px;color:#8aa0aa;margin-top:2px;}
+.iconbtn{background:#f7fbff;border:1px solid #e0f0ff;border-radius:7px;width:30px;height:30px;cursor:pointer;color:#5b6b72;}
+.linkbox{display:flex;gap:8px;align-items:center;background:#f7fbff;border:1px dashed #c9e3ec;border-radius:9px;padding:10px 12px;font-size:13px;}
+.linkbox code{flex:1;color:#193847;word-break:break-all;}
+@media(max-width:560px){ .row2{grid-template-columns:1fr;} }
+</style>
+</head>
+<body>
+{{ mp.topbar('clipboard-check', 'ΕΣΤΙΑ — ' ~ s.title, 'Επεξεργασία ερωτηματολογίου') }}
+<div class="container">
+  <div style="margin-bottom:12px;"><a class="btn" href="/dashboard/surveys?embed=1" style="background:#64748b;"><i class="ti ti-arrow-left"></i> Πίσω στη λίστα</a>
+  <a class="btn" href="/dashboard/survey/{{ s.id }}/results?embed=1"><i class="ti ti-chart-bar"></i> Αποτελέσματα</a></div>
+
+  <div class="card">
+    <div style="font-weight:700;color:#193847;margin-bottom:4px;"><i class="ti ti-settings"></i> Στοιχεία</div>
+    <form method="POST" action="/dashboard/survey/{{ s.id }}/edit?embed=1">
+      <label>Τίτλος</label>
+      <input type="text" name="title" value="{{ s.title }}" required>
+      <div class="row2">
+        <div><label>Κοινό</label><select name="audience">{% for a in AUDIENCES %}<option value="{{ a }}" {{ 'selected' if s.audience==a }}>{{ a|capitalize }}</option>{% endfor %}</select></div>
+        <div><label>Ξενοδοχείο</label><select name="hotel_id"><option value="">Όλα</option>{% for h in hotels %}<option value="{{ h.id }}" {{ 'selected' if s.hotel_id==h.id }}>{{ h.name }}</option>{% endfor %}</select></div>
+      </div>
+      <label>Περιγραφή (εμφανίζεται στους ερωτώμενους)</label>
+      <textarea name="description">{{ s.description or '' }}</textarea>
+      <label>Μήνυμα ευχαριστίας (μετά την υποβολή)</label>
+      <input type="text" name="thank_you" value="{{ s.thank_you or '' }}">
+      <button class="btn" type="submit" style="margin-top:12px;"><i class="ti ti-device-floppy"></i> Αποθήκευση</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <div style="font-weight:700;color:#193847;margin-bottom:8px;"><i class="ti ti-link"></i> Δημόσιος σύνδεσμος</div>
+    <div class="linkbox"><code id="publink">{{ app_url }}/s/{{ s.token }}</code>
+      <button class="btn" type="button" onclick="cp()"><i class="ti ti-copy"></i> Αντιγραφή</button></div>
+    <div class="muted" style="font-size:11px;margin-top:6px;">Μοιράσου τον σύνδεσμο ή φτιάξε QR code για δωμάτια/reception. Λειτουργεί χωρίς login.</div>
+  </div>
+
+  <div class="card">
+    <div style="font-weight:700;color:#193847;margin-bottom:8px;"><i class="ti ti-list-numbers"></i> Ερωτήσεις ({{ s.questions|length }})</div>
+    {% for q in s.questions %}
+    <div class="qrow">
+      <span class="muted">{{ loop.index }}.</span>
+      <div class="qt"><div class="qx">{{ q.text }}</div><div class="qm">{{ QTYPE_LABELS[q.qtype] }}{% if q.qtype=='choice' %} · {{ opts_of(q)|join(', ') }}{% endif %}{{ ' · υποχρεωτική' if q.required else '' }}</div></div>
+      <form method="POST" action="/dashboard/survey/{{ s.id }}/question/{{ q.id }}/move?embed=1" style="display:inline;"><input type="hidden" name="dir" value="up"><button class="iconbtn" type="submit" title="Πάνω"><i class="ti ti-chevron-up"></i></button></form>
+      <form method="POST" action="/dashboard/survey/{{ s.id }}/question/{{ q.id }}/move?embed=1" style="display:inline;"><input type="hidden" name="dir" value="down"><button class="iconbtn" type="submit" title="Κάτω"><i class="ti ti-chevron-down"></i></button></form>
+      <form method="POST" action="/dashboard/survey/{{ s.id }}/question/{{ q.id }}/del?embed=1" style="display:inline;" onsubmit="return confirm('Διαγραφή ερώτησης;');"><button class="iconbtn" type="submit" title="Διαγραφή" style="color:#dc2626;"><i class="ti ti-trash"></i></button></form>
+    </div>
+    {% endfor %}
+    {% if not s.questions %}<div class="muted" style="padding:10px;">Δεν υπάρχουν ακόμα ερωτήσεις.</div>{% endif %}
+
+    <div style="margin-top:14px;border-top:1px dashed #e0f0ff;padding-top:14px;">
+      <div style="font-weight:700;color:#193847;margin-bottom:4px;font-size:13px;"><i class="ti ti-plus"></i> Προσθήκη ερώτησης</div>
+      <form method="POST" action="/dashboard/survey/{{ s.id }}/question?embed=1">
+        <label>Ερώτηση</label>
+        <input type="text" name="text" placeholder="π.χ. Πώς θα βαθμολογούσατε...;" required>
+        <div class="row2">
+          <div><label>Τύπος</label><select name="qtype" id="qtype" onchange="toggleOpts()">{% for t in QTYPES %}<option value="{{ t }}">{{ QTYPE_LABELS[t] }}</option>{% endfor %}</select></div>
+          <div><label>&nbsp;</label><label style="font-weight:500;font-size:13px;display:flex;align-items:center;gap:6px;margin-top:10px;"><input type="checkbox" name="required" checked style="width:auto;"> Υποχρεωτική</label></div>
+        </div>
+        <div id="optsbox" style="display:none;"><label>Επιλογές (μία ανά γραμμή — μόνο για «Πολλαπλή επιλογή»)</label><textarea name="options" placeholder="Επιλογή 1&#10;Επιλογή 2&#10;Επιλογή 3"></textarea></div>
+        <button class="btn" type="submit" style="margin-top:10px;"><i class="ti ti-plus"></i> Προσθήκη</button>
+      </form>
+    </div>
+  </div>
+</div>
+<script>
+function cp(){var t=document.getElementById('publink').textContent;navigator.clipboard.writeText(t).then(function(){alert('Αντιγράφηκε:\n'+t);},function(){prompt('Σύνδεσμος:',t);});}
+function toggleOpts(){document.getElementById('optsbox').style.display=(document.getElementById('qtype').value==='choice')?'block':'none';}
+toggleOpts();
+</script>
+</body>
+</html>

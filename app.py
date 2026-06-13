@@ -1,5 +1,5 @@
 """
-Εστία (Estia) — CONDIAN HOTELS · Κεντρική πλατφόρμα προσωπικού (v12.22)
+Εστία (Estia) — CONDIAN HOTELS · Κεντρική πλατφόρμα προσωπικού (v12.23)
 Backend: Flask + PostgreSQL + SMTP + AI Assistant
 
 Modules:
@@ -275,7 +275,7 @@ def inject_theme():
     return {'theme': get_theme()}
 
 # έκδοση/build για το footer του shell
-APP_VERSION = '12.22'
+APP_VERSION = '12.23'
 APP_BUILD   = '2026-06-13'
 
 @app.context_processor
@@ -2697,9 +2697,11 @@ def seed_team():
 
 
 import faults          # v12.14 — Module Βλαβοληψία (μοντέλα + routes)· ΠΡΙΝ το create_all
+import surveys         # v12.23 — Module Ερωτηματολόγια (μοντέλα + routes)· ΠΡΙΝ το create_all
 init_db()
 seed_team()
 faults.seed_faults()   # seed κατηγορίες/ειδικότητες/SLA (idempotent)
+surveys.seed_surveys() # seed δείγμα ερωτηματολογίου (idempotent)
 start_scheduler()
 
 if __name__ == '__main__':
