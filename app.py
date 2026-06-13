@@ -1,5 +1,7 @@
 """
-Εστία (Estia) — CONDIAN HOTELS · Κεντρική πλατφόρμα προσωπικού (v12.24)
+Εστία (Estia) — CONDIAN HOTELS · Κεντρική πλατφόρμα προσωπικού (v12.25)
+Ασφάλεια (v12.25): SECRET_KEY enforced σε production, session cookies (HttpOnly/SameSite/Secure),
+rate-limit στο login, bootstrap admin & default κωδικοί ομάδας μέσω env (όχι σταθεροί στον κώδικα).
 Backend: Flask + PostgreSQL + SMTP + AI Assistant
 
 Modules:
@@ -39,22 +41,59 @@ from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy import text
 from datetime import datetime, date, timedelta
-import os, smtplib, threading, json, time, urllib.request, urllib.error, urllib.parse
+import os, smtplib, threading, json, time, secrets, urllib.request, urllib.error, urllib.parse
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 app = Flask(__name__)
-# ΣΗΜ. ασφάλειας: όρισε SECRET_KEY στο Railway (env). Το fallback υπάρχει μόνο για τοπικό dev.
-app.secret_key = os.environ.get('SECRET_KEY') or 'estia-dev-secret-change-me'
 
 # Railway/Heroku δίνουν 'postgres://' — η SQLAlchemy 2.x θέλει 'postgresql://'
 _db_url = os.environ.get('DATABASE_URL', 'sqlite:///water.db')
 if _db_url.startswith('postgres://'):
     _db_url = _db_url.replace('postgres://', 'postgresql://', 1)
+_IS_PRODUCTION = not _db_url.startswith('sqlite')
+
+# ── v12.25 Ασφάλεια: SECRET_KEY ──
+# Σε production (Postgres) ΑΠΑΙΤΕΙΤΑΙ SECRET_KEY από env — αλλιώς η εφαρμογή δεν ξεκινά.
+# Το dev fallback επιτρέπεται ΜΟΝΟ τοπικά (SQLite).
+_secret = os.environ.get('SECRET_KEY')
+if not _secret:
+    if _IS_PRODUCTION:
+        raise RuntimeError('SECRET_KEY δεν εχει οριστει. Ορισε SECRET_KEY στις μεταβλητες περιβαλλοντος (Railway) πριν το deploy.')
+    _secret = 'estia-dev-secret-change-me'   # μονο για τοπικο dev (SQLite)
+app.secret_key = _secret
+
 app.config['SQLALCHEMY_DATABASE_URI'] = _db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {'pool_pre_ping': True}
 app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024   # 2MB (avatar upload)
+
+# ── v12.25 Ασφάλεια: session cookies ──
+app.config['SESSION_COOKIE_HTTPONLY']    = True             # οχι προσβαση απο JavaScript (XSS)
+app.config['SESSION_COOKIE_SAMESITE']    = 'Lax'            # μετριαζει CSRF
+app.config['SESSION_COOKIE_SECURE']      = _IS_PRODUCTION   # cookies μονο μεσω HTTPS σε production
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
+
+# ── v12.25 Ασφαλεια: απλο rate-limit στο login (in-memory ανα worker) ──
+_LOGIN_MAX_FAILS = 5     # μετα απο τοσες αποτυχιες...
+_LOGIN_WINDOW    = 300   # ...μεσα σε τοσα δευτερολεπτα → προσωρινο κλειδωμα
+_login_fails     = {}    # key(IP) -> [timestamps αποτυχιων]
+
+def _login_key():
+    xff = request.headers.get('X-Forwarded-For', '')
+    return xff.split(',')[0].strip() if xff else (request.remote_addr or 'unknown')
+
+def _login_blocked(key):
+    now = time.time()
+    fails = [t for t in _login_fails.get(key, []) if now - t < _LOGIN_WINDOW]
+    _login_fails[key] = fails
+    return len(fails) >= _LOGIN_MAX_FAILS
+
+def _login_record_fail(key):
+    _login_fails.setdefault(key, []).append(time.time())
+
+def _login_reset(key):
+    _login_fails.pop(key, None)
 
 SMTP_SERVER    = 'condian.gr'
 SMTP_PORT      = 465
@@ -275,7 +314,7 @@ def inject_theme():
     return {'theme': get_theme()}
 
 # έκδοση/build για το footer του shell
-APP_VERSION = '12.24'
+APP_VERSION = '12.25'
 APP_BUILD   = '2026-06-13'
 
 @app.context_processor
@@ -1191,16 +1230,21 @@ def index():
 def login():
     error = None
     if request.method == 'POST':
+        _k = _login_key()
+        if _login_blocked(_k):
+            return render_template('login.html', error='Πολλες αποτυχημενες προσπαθειες. Δοκιμασε ξανα σε λιγα λεπτα.')
         username = request.form.get('username', '').strip()
         password = request.form.get('password', '')
         user = User.query.filter_by(username=username, is_active=True).first()
         if user and user.approved and check_password_hash(user.password, password):
+            _login_reset(_k)
             session['user_id']   = user.id
             session['user_name'] = user.full_name
             session['user_role'] = user.role
             session['language']  = user.language
             log_activity('login')
             return redirect(url_for('index'))
+        _login_record_fail(_k)
         error = 'Λαθος username η password'
     return render_template('login.html', error=error)
 
@@ -2545,12 +2589,20 @@ def init_db():
         db.create_all()
         ensure_columns()
         try:
-            if not User.query.filter_by(username='admin').first():
-                db.session.add(User(username='admin', password=generate_password_hash('sergios2024'), full_name='Δημητρης Γιαννουλακης', role='masteradmin', language='el'))
-                db.session.add(User(username='giannhs', password=generate_password_hash('pool2024'), full_name='Γιαννης Γιακουμακης', role='admin', language='el'))
-                db.session.add(User(username='xypakis', password=generate_password_hash('water2024'), full_name='Μανος Χυπακης', role='staff', language='el'))
+            # v12.25 — Bootstrap πρωτου masteradmin ΜΟΝΟ σε αδεια βαση, με credentials απο env.
+            # Δεν υπαρχουν πλεον demo accounts με σταθερους κωδικους μεσα στον κωδικα.
+            if User.query.count() == 0:
+                _admin_user = os.environ.get('BOOTSTRAP_ADMIN_USER', 'admin')
+                _admin_pw   = os.environ.get('BOOTSTRAP_ADMIN_PASSWORD')
+                if not _admin_pw:
+                    _admin_pw = secrets.token_urlsafe(12)
+                    print(f'[ESTIA] Αρχικος masteradmin "{_admin_user}" με ΤΥΧΑΙΟ κωδικο: {_admin_pw}')
+                    print('[ESTIA] Αλλαξε τον κωδικο αμεσως μετα την πρωτη συνδεση.')
+                db.session.add(User(username=_admin_user, password=generate_password_hash(_admin_pw),
+                                    full_name='Διαχειριστης', role='masteradmin', language='el',
+                                    approved=True, is_active=True))
                 db.session.commit()
-                print('Βαση δεδομενων και χρηστες δημιουργηθηκαν')
+                print('Βαση δεδομενων και αρχικος διαχειριστης δημιουργηθηκαν')
             if not Hotel.query.first():
                 sergios = Hotel(name='Sergios Hotel')
                 db.session.add(sergios)
@@ -2684,13 +2736,16 @@ def seed_team():
                 ('smyrnakis',    'Σμυρνάκης Χριστόφορος',  'manager',     'c.smyrnakis@condianhotels.gr',   '+306992015939'),
                 ('flouris',      'Φλουρής Στέφανος',       'manager',     's.flouris@condianhotels.gr',     '+306931549656'),
             ]
+            # v12.25 — ο αρχικος κωδικος ομαδας ερχεται απο env (fallback για συμβατοτητα).
+            # Συσταση: ορισε TEAM_DEFAULT_PASSWORD στο Railway και ζητα αλλαγη στην 1η συνδεση.
+            _team_pw = os.environ.get('TEAM_DEFAULT_PASSWORD', 'condian2026')
             for un, fn, role, em, ph in team:
                 u = User.query.filter_by(username=un).first()
                 if u:
                     u.full_name = fn; u.role = role; u.email = em; u.phone = ph
                     u.approved = True; u.is_active = True
                 else:
-                    db.session.add(User(username=un, password=generate_password_hash('condian2026'),
+                    db.session.add(User(username=un, password=generate_password_hash(_team_pw),
                                         full_name=fn, role=role, email=em, phone=ph,
                                         approved=True, is_active=True, language='el'))
             db.session.add(Setting(key='seeded_team_v1', value='1'))
