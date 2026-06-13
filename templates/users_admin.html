@@ -147,6 +147,15 @@ html[data-theme="dark"] .umodal-box .muted { color:#7b8a98; }
                   <button type="submit" class="btn" style="background:#475569;color:white;font-size:12px;padding:6px 12px;">Ορισμός</button>
                 </form>
                 <div style="font-size:11px;color:#999;margin-bottom:8px;">👁 για να δεις/αντιγράψεις τον νέο κωδικό. Οι παλιοί κωδικοί είναι κρυπτογραφημένοι και δεν εμφανίζονται.</div>
+                {% if fault_specs %}
+                <form method="POST" action="/dashboard/faults/user-specialties/{{ u.id }}" style="margin-bottom:8px;border-top:1px solid #eef2f5;padding-top:8px;">
+                  <div style="font-size:11px;color:#888;margin-bottom:4px;"><i class="ti ti-tools"></i> Ειδικότητες (αυτόματη ανάθεση βλαβών):</div>
+                  <div style="display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;margin-bottom:6px;">
+                    {% for sp in fault_specs %}<label style="white-space:nowrap;"><input type="checkbox" name="specialties" value="{{ sp }}" {{ 'checked' if sp in user_specs.get(u.id, []) }}> {{ sp }}</label>{% endfor %}
+                  </div>
+                  <button type="submit" class="btn btn-primary" style="font-size:12px;padding:5px 12px;">Αποθήκευση ειδικοτήτων</button>
+                </form>
+                {% endif %}
                 <div style="display:flex;gap:6px;flex-wrap:wrap;">
                   <form method="POST" action="/dashboard/toggle-user/{{ u.id }}"><button type="submit" class="btn" style="background:#fde68a;color:#92400e;font-size:12px;padding:6px 12px;">{{ 'Απενεργοποίηση' if u.is_active else 'Ενεργοποίηση' }}</button></form>
                   {% if u.role != 'masteradmin' %}<form method="POST" action="/dashboard/delete-user/{{ u.id }}" onsubmit="return confirm('Διαγραφή χρήστη;')"><button type="submit" class="btn-danger">Διαγραφή</button></form>{% endif %}

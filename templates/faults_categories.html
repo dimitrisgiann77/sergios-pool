@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Εστία — Κατηγορίες Βλαβών</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<style>
+* { box-sizing:border-box; margin:0; padding:0; }
+body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background:#f0f7ff; color:#1a1a1a; }
+.topbar { background:#193847; color:white; padding:14px 24px; display:flex; align-items:center; justify-content:space-between; }
+.topbar-title { font-size:16px; font-weight:600; }
+.topbar a { color:#fff; text-decoration:none; font-size:13px; }
+.container { max-width:860px; margin:0 auto; padding:24px; }
+.card { background:white; border-radius:12px; padding:18px; border:1px solid #e0f0ff; margin-bottom:18px; }
+.card-title { font-size:14px; font-weight:600; color:#333; margin-bottom:12px; }
+.node { display:flex; align-items:center; gap:8px; padding:5px 0; border-bottom:1px solid #f4f7f9; }
+.node.l1 { font-weight:600; color:#193847; margin-top:6px; }
+.node.off { opacity:.45; }
+.lvl { font-size:10px; color:#9aa7ad; }
+.mini { background:none; border:none; cursor:pointer; color:#94a3b8; font-size:14px; }
+.row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+input, select { padding:8px 10px; border:1px solid #d6eef3; border-radius:8px; font-size:14px; }
+.btn { padding:8px 13px; border:none; border-radius:8px; font-size:13px; font-weight:500; cursor:pointer; background:#193847; color:#fff; }
+.muted { color:#9aa7ad; font-size:12px; }
+details summary { list-style:none; cursor:pointer; }
+</style>
+<style>:root{--brand:{{ theme.primary }};}.topbar{background:var(--brand)!important;}.btn{background:var(--brand)!important;}.node.l1{color:var(--brand)!important;}</style>
+<script>try{if(new URLSearchParams(location.search).get("embed")==="1"){document.documentElement.classList.add("embed");document.addEventListener("DOMContentLoaded",function(){document.querySelectorAll("a[href^='/']").forEach(function(a){var h=a.getAttribute("href");if(h&&h.indexOf("embed=")<0&&!a.target){a.setAttribute("href",h+(h.indexOf("?")<0?"?":"&")+"embed=1");}});});}}catch(e){}</script>
+<style>.embed .topbar{display:none!important;}.embed body{background:transparent!important;}</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-title"><i class="ti ti-list-tree"></i> ΕΣΤΙΑ — Κατηγορίες Βλαβών</div>
+  <div><a href="/dashboard/faults/settings?embed=1"><i class="ti ti-arrow-left"></i> Ρυθμίσεις</a></div>
+</div>
+<div class="container">
+
+  <div class="card">
+    <div class="card-title"><i class="ti ti-plus"></i> Νέα κατηγορία</div>
+    <form class="row" method="POST" action="/dashboard/faults/category/add?embed=1">
+      <select name="parent_id" style="max-width:380px;"><option value="">— Κύριος κλάδος (level 1) —</option>{% for c in allcats %}<option value="{{ c.id }}">{{ '· '*(c.level-1) }}{{ c.name }}</option>{% endfor %}</select>
+      <input type="text" name="name" placeholder="Όνομα κατηγορίας" required>
+      <button class="btn" type="submit">Προσθήκη</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Δέντρο κατηγοριών</div>
+    {% macro rnode(it, depth) %}
+      <div class="node {{ 'l1' if depth==0 }} {{ '' if it.node.is_active else 'off' }}" style="padding-left:{{ depth*22 }}px;">
+        <span style="flex:1;">{{ it.node.name }} <span class="lvl">L{{ it.node.level }}</span></span>
+        <details><summary class="mini" title="Μετονομασία"><i class="ti ti-pencil"></i></summary>
+          <form method="POST" action="/dashboard/faults/category/{{ it.node.id }}/rename?embed=1" class="row" style="margin:4px 0;">
+            <input type="text" name="name" value="{{ it.node.name }}" required><button class="btn" type="submit" style="padding:5px 10px;">OK</button>
+          </form>
+        </details>
+        <form method="POST" action="/dashboard/faults/category/{{ it.node.id }}/toggle?embed=1" style="display:inline;"><button class="mini" type="submit" title="Ενεργό/Ανενεργό"><i class="ti ti-power"></i></button></form>
+      </div>
+      {% for ch in it.children %}{{ rnode(ch, depth+1) }}{% endfor %}
+    {% endmacro %}
+    {% for it in forest %}{{ rnode(it, 0) }}{% else %}<span class="muted">Καμία κατηγορία.</span>{% endfor %}
+  </div>
+
+</div>
+</body>
+</html>

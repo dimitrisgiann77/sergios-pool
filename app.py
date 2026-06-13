@@ -1,5 +1,5 @@
 """
-Εστία (Estia) — CONDIAN HOTELS · Κεντρική πλατφόρμα προσωπικού (v12.14)
+Εστία (Estia) — CONDIAN HOTELS · Κεντρική πλατφόρμα προσωπικού (v12.15)
 Backend: Flask + PostgreSQL + SMTP + AI Assistant
 
 Modules:
@@ -28,6 +28,8 @@ Modules:
              η διαχείριση χρήστη σε pop-up modal (αντί για ανάπτυξη)· delete μέσα στο modal
   - v12.14 — Module Βλαβοληψία Φάση 1 (faults.py): δέντρο κατηγοριών (240), 9 καταστάσεις/state machine,
              αυτόματη/χειροκίνητη ανάθεση, σχόλια 2 καναλιών, audit log, SLA seed, μαζική «Ολοκλήρωση»
+  - v12.15 — Βλαβοληψία Φάση 2: admin ρυθμίσεις (ειδικότητες/SLA/tags/χάρτης editable)· δέντρο κατηγοριών·
+             SLA badges· export xlsx/csv/pdf· ειδικότητες ανά χρήστη· overview KPI σε νέο Fault
 """
 
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, Response
@@ -271,7 +273,7 @@ def inject_theme():
     return {'theme': get_theme()}
 
 # έκδοση/build για το footer του shell
-APP_VERSION = '12.14'
+APP_VERSION = '12.15'
 APP_BUILD   = '2026-06-13'
 
 @app.context_processor
@@ -1585,9 +1587,18 @@ def users_admin():
     users   = User.query.filter_by(is_active=True, approved=True).all()
     inactive = User.query.filter_by(is_active=False).all()
     pending = User.query.filter_by(is_active=True, approved=False).all()
+    try:                                  # v12.15 — ειδικότητες (Module Βλαβοληψία)
+        import faults as _flt
+        fault_specs = [s.name for s in _flt.Specialty.query.filter_by(is_active=True).order_by(_flt.Specialty.sort, _flt.Specialty.name).all()]
+        user_specs = {}
+        for us in _flt.UserSpecialty.query.all():
+            user_specs.setdefault(us.user_id, []).append(us.specialty)
+    except Exception:
+        fault_specs, user_specs = [], {}
     return render_template('users_admin.html', users=users + inactive, pending=pending,
                            all_hotels=Hotel.query.filter_by(is_active=True).order_by(Hotel.name).all(),
-                           role_labels=ROLE_LABELS, me=current_user())
+                           role_labels=ROLE_LABELS, me=current_user(),
+                           fault_specs=fault_specs, user_specs=user_specs)
 
 
 # v12.4 — Records: ενιαίο feed υποβολών (πισίνες + νερά χρήσης), role-scoped
@@ -2098,7 +2109,7 @@ def overview():
             'areas': Area.query.filter_by(is_active=True).count(),
             'users': User.query.filter_by(is_active=True, approved=True).count(),
             'compliance': int(100 * total_done / total_exp) if total_exp else 100,
-            'open_faults': FaultReport.query.filter_by(status='open').count(),
+            'open_faults': (__import__('faults').Fault.query.filter(~__import__('faults').Fault.status.in_(('done','not_done','resubmitted'))).count()),
             'pending': len(pending), 'alerts': len(alerts)}
     return render_template('overview.html', cov=cov, alerts=alerts, faults=faults,
                            pending=pending, kpis=kpis, areas_labels=AREA_LABELS)

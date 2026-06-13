@@ -36,7 +36,8 @@ select, textarea, input { padding:9px 11px; border:1px solid #d6eef3; border-rad
 <body>
 <div class="topbar">
   <div class="topbar-title"><i class="ti ti-tool"></i> {{ f.code }}
-    <span class="badge" style="background:{{ STATUS_COLOR[f.status][0] }};color:{{ STATUS_COLOR[f.status][1] }};">{{ STATUS_LABELS[f.status] }}</span></div>
+    <span class="badge" style="background:{{ STATUS_COLOR[f.status][0] }};color:{{ STATUS_COLOR[f.status][1] }};">{{ STATUS_LABELS[f.status] }}</span>
+    {% set sl = sla_state(f) %}{% if sl[0]=='overdue' %}<span class="badge" style="background:#fee2e2;color:#dc2626;">⚠ {{ sl[1] }}</span>{% elif sl[0]=='stale' %}<span class="badge" style="background:#fef3c7;color:#b45309;">{{ sl[1] }}</span>{% endif %}</div>
   <div><a href="/dashboard/faults?embed=1"><i class="ti ti-arrow-left"></i> Λίστα</a></div>
 </div>
 <div class="container">

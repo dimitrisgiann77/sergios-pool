@@ -361,7 +361,8 @@ def faults_inbox():
                            STATUS_LABELS=STATUS_LABELS, STATUS_COLOR=STATUS_COLOR, PRIORITY_COLOR=PRIORITY_COLOR,
                            PRIORITIES=PRIORITIES, STATUSES=STATUSES, is_admin=is_admin(),
                            f_hotel=f_hotel, f_status=f_status, f_priority=f_priority, f_assignee=f_assignee,
-                           search=search, open_n=open_n, user=user)
+                           search=search, open_n=open_n, user=user, sla_state=sla_state,
+                           qs=request.query_string.decode('utf-8'))
 
 @app.route('/dashboard/fault/<int:fid>')
 def fault_detail(fid):
@@ -382,7 +383,7 @@ def fault_detail(fid):
     return render_template('fault_detail.html', f=f, logs=logs, comments=comments, files=files,
                            candidates=cands, users=users, allowed=allowed, is_admin=is_admin(),
                            STATUS_LABELS=STATUS_LABELS, STATUS_COLOR=STATUS_COLOR, PRIORITY_COLOR=PRIORITY_COLOR,
-                           cat_path=_cat_path(f.category), user=user, me=user)
+                           cat_path=_cat_path(f.category), user=user, me=user, sla_state=sla_state)
 
 def _cat_path(cat):
     parts = []; seen = 0
@@ -496,4 +497,237 @@ def faults_bulk():
     log_activity('faults_bulk', '%s x%d' % (action, n))
     return redirect(url_for('faults_inbox') + '?embed=1')
 
+# ── v12.15 (Φάση 2) — SLA, admin ρυθμίσεις, export, ειδικότητες χρηστών ──────
+def sla_minutes(f):
+    t = SLATarget.query.filter_by(scope='tag', key=f.tag).first() if f.tag else None
+    if not t:
+        t = SLATarget.query.filter_by(scope='priority', key=f.priority).first()
+    return t.minutes if t else None
+
+def fault_stale_days():
+    s = Setting.query.get('fault_stale_days')
+    try:
+        return int(s.value) if s and s.value else 60
+    except Exception:
+        return 60
+
+def sla_state(f):
+    """(code, label): '' | overdue 'Εκπρόθεσμη' | stale 'Χρονίζει'. Παγώνει σε paused/winter/τερματικές."""
+    if (not f.submitted_at) or f.status in TERMINAL or f.status in ('paused', 'winter'):
+        return ('', '')
+    now = datetime.utcnow()
+    if f.due_at and now > f.due_at:
+        return ('overdue', 'Εκπρόθεσμη')
+    elapsed_min = (now - f.submitted_at).total_seconds() / 60.0
+    m = sla_minutes(f)
+    if m and elapsed_min > m:
+        return ('overdue', 'Εκπρόθεσμη')
+    if elapsed_min > fault_stale_days() * 1440:
+        return ('stale', 'Χρονίζει')
+    return ('ok', '')
+
+def _filtered_faults(user):
+    q = visible_faults_query(user)
+    a = request.args
+    if a.get('hotel_id', type=int):   q = q.filter(Fault.hotel_id == a.get('hotel_id', type=int))
+    if a.get('status'):               q = q.filter(Fault.status == a.get('status'))
+    if a.get('priority'):             q = q.filter(Fault.priority == a.get('priority'))
+    if a.get('assigned_user_id', type=int): q = q.filter(Fault.assigned_user_id == a.get('assigned_user_id', type=int))
+    s = (a.get('q') or '').strip()
+    if s:
+        q = q.filter((Fault.description.ilike('%%%s%%' % s)) | (Fault.code.ilike('%%%s%%' % s)))
+    return q.order_by(Fault.id.desc())
+
+@app.route('/dashboard/faults/settings')
+def faults_settings():
+    if not is_admin():
+        return redirect(url_for('login'))
+    specs = Specialty.query.order_by(Specialty.sort, Specialty.name).all()
+    slas = {t.key: t.minutes for t in SLATarget.query.filter_by(scope='priority').all()}
+    tags = FaultTag.query.order_by(FaultTag.name).all()
+    cmap = []
+    for cs in CategorySpecialty.query.all():
+        c = FaultCategory.query.get(cs.category_id)
+        cmap.append({'id': cs.id, 'cat': c.name if c else '—', 'specialty': cs.specialty})
+    allcats = FaultCategory.query.order_by(FaultCategory.level, FaultCategory.name).all()
+    return render_template('faults_settings.html', specs=specs, slas=slas, tags=tags,
+                           cmap=cmap, allcats=allcats, active_specs=[s.name for s in specs if s.is_active],
+                           PRIORITIES=PRIORITIES, stale_days=fault_stale_days())
+
+@app.route('/dashboard/faults/specialty/add', methods=['POST'])
+def faults_specialty_add():
+    if not is_admin(): return redirect(url_for('login'))
+    name = (request.form.get('name') or '').strip()
+    if name and not Specialty.query.filter_by(name=name).first():
+        db.session.add(Specialty(name=name, sort=99)); db.session.commit()
+    return redirect(url_for('faults_settings') + '?embed=1')
+
+@app.route('/dashboard/faults/specialty/<int:sid>/toggle', methods=['POST'])
+def faults_specialty_toggle(sid):
+    if not is_admin(): return redirect(url_for('login'))
+    sp = Specialty.query.get(sid)
+    if sp: sp.is_active = not sp.is_active; db.session.commit()
+    return redirect(url_for('faults_settings') + '?embed=1')
+
+@app.route('/dashboard/faults/sla', methods=['POST'])
+def faults_sla_save():
+    if not is_admin(): return redirect(url_for('login'))
+    for p in PRIORITIES:
+        v = request.form.get('sla_' + p, type=int)
+        if v and v > 0:
+            t = SLATarget.query.filter_by(scope='priority', key=p).first()
+            if t: t.minutes = v
+            else: db.session.add(SLATarget(scope='priority', key=p, minutes=v))
+    sd = request.form.get('stale_days', type=int)
+    if sd and sd > 0:
+        s = Setting.query.get('fault_stale_days')
+        if s: s.value = str(sd)
+        else: db.session.add(Setting(key='fault_stale_days', value=str(sd)))
+    db.session.commit()
+    return redirect(url_for('faults_settings') + '?embed=1&saved=1')
+
+@app.route('/dashboard/faults/tag/add', methods=['POST'])
+def faults_tag_add():
+    if not is_admin(): return redirect(url_for('login'))
+    name = (request.form.get('name') or '').strip()
+    color = (request.form.get('color') or '#b91c1c').strip()
+    if name and not FaultTag.query.filter_by(name=name).first():
+        db.session.add(FaultTag(name=name, color=color)); db.session.commit()
+    return redirect(url_for('faults_settings') + '?embed=1')
+
+@app.route('/dashboard/faults/tag/<int:tid>/del', methods=['POST'])
+def faults_tag_del(tid):
+    if not is_admin(): return redirect(url_for('login'))
+    t = FaultTag.query.get(tid)
+    if t: db.session.delete(t); db.session.commit()
+    return redirect(url_for('faults_settings') + '?embed=1')
+
+@app.route('/dashboard/faults/map/add', methods=['POST'])
+def faults_map_add():
+    if not is_admin(): return redirect(url_for('login'))
+    cid = request.form.get('category_id', type=int)
+    sp = (request.form.get('specialty') or '').strip()
+    if cid and sp and not CategorySpecialty.query.filter_by(category_id=cid, specialty=sp).first():
+        db.session.add(CategorySpecialty(category_id=cid, specialty=sp)); db.session.commit()
+    return redirect(url_for('faults_settings') + '?embed=1')
+
+@app.route('/dashboard/faults/map/<int:mid>/del', methods=['POST'])
+def faults_map_del(mid):
+    if not is_admin(): return redirect(url_for('login'))
+    m = CategorySpecialty.query.get(mid)
+    if m: db.session.delete(m); db.session.commit()
+    return redirect(url_for('faults_settings') + '?embed=1')
+
+@app.route('/dashboard/faults/categories')
+def faults_categories():
+    if not is_admin(): return redirect(url_for('login'))
+    roots = FaultCategory.query.filter_by(level=1).order_by(FaultCategory.name).all()
+    def tree(node):
+        kids = FaultCategory.query.filter_by(parent_id=node.id).order_by(FaultCategory.sort, FaultCategory.name).all()
+        return {'node': node, 'children': [tree(k) for k in kids]}
+    forest = [tree(r) for r in roots]
+    allcats = FaultCategory.query.order_by(FaultCategory.level, FaultCategory.name).all()
+    return render_template('faults_categories.html', forest=forest, allcats=allcats)
+
+@app.route('/dashboard/faults/category/add', methods=['POST'])
+def faults_category_add():
+    if not is_admin(): return redirect(url_for('login'))
+    name = (request.form.get('name') or '').strip()
+    pid = request.form.get('parent_id', type=int)
+    parent = FaultCategory.query.get(pid) if pid else None
+    if name:
+        lvl = (parent.level + 1) if parent else 1
+        db.session.add(FaultCategory(name=name, parent_id=parent.id if parent else None, level=min(lvl, 3)))
+        db.session.commit()
+    return redirect(url_for('faults_categories') + '?embed=1')
+
+@app.route('/dashboard/faults/category/<int:cid>/rename', methods=['POST'])
+def faults_category_rename(cid):
+    if not is_admin(): return redirect(url_for('login'))
+    c = FaultCategory.query.get(cid); name = (request.form.get('name') or '').strip()
+    if c and name: c.name = name; db.session.commit()
+    return redirect(url_for('faults_categories') + '?embed=1')
+
+@app.route('/dashboard/faults/category/<int:cid>/toggle', methods=['POST'])
+def faults_category_toggle(cid):
+    if not is_admin(): return redirect(url_for('login'))
+    c = FaultCategory.query.get(cid)
+    if c: c.is_active = not c.is_active; db.session.commit()
+    return redirect(url_for('faults_categories') + '?embed=1')
+
+@app.route('/dashboard/faults/user-specialties/<int:uid>', methods=['POST'])
+def faults_user_specialties(uid):
+    if not is_admin(): return redirect(url_for('login'))
+    UserSpecialty.query.filter_by(user_id=uid).delete()
+    for sp in request.form.getlist('specialties'):
+        if Specialty.query.filter_by(name=sp).first():
+            db.session.add(UserSpecialty(user_id=uid, specialty=sp))
+    db.session.commit()
+    return redirect(url_for('users_admin') + '?embed=1&success=user_edited')
+
+@app.route('/dashboard/faults/export')
+def faults_export():
+    if 'user_id' not in session: return redirect(url_for('login'))
+    from flask import Response
+    user = current_user()
+    faults = _filtered_faults(user).limit(5000).all()
+    fmt = request.args.get('fmt', 'xlsx')
+    headers = ['Κωδικός', 'Ξενοδοχείο', 'Κατηγορία', 'Προτεραιότητα', 'Κατάσταση', 'Ανάθεση', 'Υποβλήθηκε', 'Ολοκληρώθηκε', 'SLA']
+    def row(f):
+        return [f.code, f.hotel.name if f.hotel else '', f.category.name if f.category else '',
+                f.priority, STATUS_LABELS.get(f.status, f.status),
+                f.assignee.full_name if f.assignee else '',
+                f.submitted_at.strftime('%d/%m/%Y %H:%M') if f.submitted_at else '',
+                f.completed_at.strftime('%d/%m/%Y %H:%M') if f.completed_at else '',
+                sla_state(f)[1]]
+    fname = 'estia-faults-%s' % datetime.utcnow().strftime('%Y%m%d-%H%M')
+    if fmt == 'csv':
+        import io
+        buf = io.StringIO(); w = csv.writer(buf); w.writerow(headers)
+        for f in faults: w.writerow(row(f))
+        return Response('﻿' + buf.getvalue(), mimetype='text/csv; charset=utf-8',
+                        headers={'Content-Disposition': 'attachment; filename=%s.csv' % fname})
+    if fmt == 'pdf':
+        from fpdf import FPDF
+        NAVY = (25, 56, 71)
+        pdf = FPDF(orientation='L', unit='mm', format='A4'); pdf.set_auto_page_break(True, 12)
+        pdf.add_font('dv', '', os.path.join(BASE_DIR, 'assets', 'fonts', 'DejaVuSans.ttf'))
+        pdf.add_font('dv', 'B', os.path.join(BASE_DIR, 'assets', 'fonts', 'DejaVuSans-Bold.ttf'))
+        pdf.add_page()
+        pdf.set_font('dv', 'B', 14); pdf.set_text_color(*NAVY); pdf.cell(0, 9, 'Εστία — Βλάβες', ln=1)
+        pdf.set_font('dv', '', 9); pdf.set_text_color(90, 90, 90)
+        pdf.cell(0, 6, 'Σύνολο: %d · %s' % (len(faults), datetime.utcnow().strftime('%d/%m/%Y %H:%M')), ln=1); pdf.ln(2)
+        widths = [30, 40, 50, 22, 34, 38, 30, 30]
+        pdf.set_font('dv', 'B', 8); pdf.set_fill_color(*NAVY); pdf.set_text_color(255, 255, 255)
+        for h, w in zip(headers[:8], widths): pdf.cell(w, 7, h, fill=True)
+        pdf.ln(7); pdf.set_text_color(40, 40, 40)
+        for f in faults:
+            pdf.set_font('dv', '', 7.5)
+            for val, w in zip(row(f)[:8], widths):
+                s = str(val)
+                while s and pdf.get_string_width(s) > w - 2 and len(s) > 3: s = s[:-2]
+                pdf.cell(w, 6, s)
+            pdf.ln(6)
+        return Response(bytes(pdf.output()), mimetype='application/pdf',
+                        headers={'Content-Disposition': 'attachment; filename=%s.pdf' % fname})
+    import io
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill
+    from openpyxl.utils import get_column_letter
+    wb = Workbook(); ws = wb.active; ws.title = 'Βλάβες'
+    navy = PatternFill('solid', fgColor='193847')
+    for j, h in enumerate(headers, 1):
+        c = ws.cell(row=1, column=j, value=h); c.font = Font(bold=True, color='FFFFFF'); c.fill = navy
+    for i, f in enumerate(faults, 2):
+        for j, v in enumerate(row(f), 1):
+            ws.cell(row=i, column=j, value=v)
+    for j, w in enumerate([16, 22, 30, 12, 18, 22, 17, 17, 12], 1):
+        ws.column_dimensions[get_column_letter(j)].width = w
+    ws.freeze_panes = 'A2'
+    buf = io.BytesIO(); wb.save(buf)
+    return Response(buf.getvalue(),
+                    mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    headers={'Content-Disposition': 'attachment; filename=%s.xlsx' % fname})
+
 print('[faults] module loaded')
+

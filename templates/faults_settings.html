@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Εστία — Βλάβες · Ρυθμίσεις</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<style>
+* { box-sizing:border-box; margin:0; padding:0; }
+body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background:#f0f7ff; color:#1a1a1a; }
+.topbar { background:#193847; color:white; padding:14px 24px; display:flex; align-items:center; justify-content:space-between; }
+.topbar-title { font-size:16px; font-weight:600; }
+.topbar a { color:#fff; text-decoration:none; font-size:13px; }
+.container { max-width:860px; margin:0 auto; padding:24px; }
+.card { background:white; border-radius:12px; padding:18px; border:1px solid #e0f0ff; margin-bottom:18px; }
+.card-title { font-size:14px; font-weight:600; color:#333; margin-bottom:14px; display:flex; align-items:center; gap:7px; }
+.chip { display:inline-flex; align-items:center; gap:6px; padding:5px 10px; border-radius:20px; background:#eef5f8; font-size:13px; margin:0 6px 6px 0; }
+.chip.off { opacity:.45; text-decoration:line-through; }
+.row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+input, select { padding:8px 10px; border:1px solid #d6eef3; border-radius:8px; font-size:14px; }
+.btn { padding:8px 13px; border:none; border-radius:8px; font-size:13px; font-weight:500; cursor:pointer; background:#193847; color:#fff; }
+.mini { background:none; border:none; cursor:pointer; color:#94a3b8; font-size:15px; }
+.saved { background:#dcfce7; color:#16a34a; padding:9px 13px; border-radius:8px; margin-bottom:14px; font-size:13px; }
+table { width:100%; border-collapse:collapse; font-size:13px; } td { padding:7px 6px; border-bottom:1px solid #f0f4f7; }
+.muted { color:#9aa7ad; font-size:12px; }
+</style>
+<style>:root{--brand:{{ theme.primary }};}.topbar{background:var(--brand)!important;}.btn{background:var(--brand)!important;}</style>
+<script>try{if(new URLSearchParams(location.search).get("embed")==="1"){document.documentElement.classList.add("embed");document.addEventListener("DOMContentLoaded",function(){document.querySelectorAll("a[href^='/']").forEach(function(a){var h=a.getAttribute("href");if(h&&h.indexOf("embed=")<0&&!a.target){a.setAttribute("href",h+(h.indexOf("?")<0?"?":"&")+"embed=1");}});});}}catch(e){}</script>
+<style>.embed .topbar{display:none!important;}.embed body{background:transparent!important;}</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-title"><i class="ti ti-settings"></i> ΕΣΤΙΑ — Βλάβες · Ρυθμίσεις</div>
+  <div><a href="/dashboard/faults/categories?embed=1"><i class="ti ti-list-tree"></i> Κατηγορίες</a></div>
+</div>
+<div class="container">
+  {% if request.args.get('saved') %}<div class="saved">Αποθηκεύτηκε!</div>{% endif %}
+
+  <div class="card">
+    <div class="card-title"><i class="ti ti-tools"></i> Ειδικότητες τεχνικών</div>
+    <div style="margin-bottom:10px;">
+      {% for s in specs %}
+      <span class="chip {{ '' if s.is_active else 'off' }}">{{ s.name }}
+        <form method="POST" action="/dashboard/faults/specialty/{{ s.id }}/toggle?embed=1" style="display:inline;"><button class="mini" type="submit" title="Ενεργό/Ανενεργό"><i class="ti ti-power"></i></button></form>
+      </span>
+      {% endfor %}
+    </div>
+    <form class="row" method="POST" action="/dashboard/faults/specialty/add?embed=1">
+      <input type="text" name="name" placeholder="Νέα ειδικότητα" required>
+      <button class="btn" type="submit"><i class="ti ti-plus"></i> Προσθήκη</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><i class="ti ti-clock-hour-4"></i> SLA (χρόνοι-στόχοι σε λεπτά)</div>
+    <form method="POST" action="/dashboard/faults/sla?embed=1" class="row">
+      {% for p in PRIORITIES %}<label style="font-size:13px;">{{ p }} <input type="number" name="sla_{{ p }}" value="{{ slas.get(p,'') }}" min="1" style="width:90px;"></label>{% endfor %}
+      <label style="font-size:13px;">«Χρονίζει» μετά (ημέρες) <input type="number" name="stale_days" value="{{ stale_days }}" min="1" style="width:80px;"></label>
+      <button class="btn" type="submit"><i class="ti ti-device-floppy"></i> Αποθήκευση</button>
+    </form>
+    <div class="muted" style="margin-top:8px;">Το ρολόι παγώνει σε «Σε παύση»/«Για χειμώνα». «Εκπρόθεσμη» αν περάσει ο στόχος, «Χρονίζει» μετά τις ημέρες.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><i class="ti ti-tags"></i> Tags διοίκησης</div>
+    <div style="margin-bottom:10px;">
+      {% for t in tags %}<span class="chip" style="background:{{ t.color }}22;color:{{ t.color }};">{{ t.name }}
+        <form method="POST" action="/dashboard/faults/tag/{{ t.id }}/del?embed=1" style="display:inline;" onsubmit="return confirm('Διαγραφή tag;')"><button class="mini" type="submit"><i class="ti ti-x"></i></button></form></span>
+      {% else %}<span class="muted">Κανένα tag ακόμα.</span>{% endfor %}
+    </div>
+    <form class="row" method="POST" action="/dashboard/faults/tag/add?embed=1">
+      <input type="text" name="name" placeholder="π.χ. VIP, Επείγον δωματίου" required>
+      <input type="color" name="color" value="#b91c1c" style="width:46px;height:36px;padding:2px;">
+      <button class="btn" type="submit"><i class="ti ti-plus"></i> Προσθήκη</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><i class="ti ti-arrows-split"></i> Χάρτης Κατηγορία → Ειδικότητα (αυτόματη ανάθεση)</div>
+    <table>
+      {% for m in cmap %}
+      <tr><td>{{ m.cat }}</td><td>→ <strong>{{ m.specialty }}</strong></td>
+        <td style="text-align:right;"><form method="POST" action="/dashboard/faults/map/{{ m.id }}/del?embed=1" style="display:inline;"><button class="mini" type="submit"><i class="ti ti-trash"></i></button></form></td></tr>
+      {% else %}<tr><td class="muted">Κανένας κανόνας — οι βλάβες χωρίς αντιστοίχιση πάνε σε «Αναμένει ανάθεση».</td></tr>{% endfor %}
+    </table>
+    <form class="row" method="POST" action="/dashboard/faults/map/add?embed=1" style="margin-top:10px;">
+      <select name="category_id" required style="max-width:340px;"><option value="">Κατηγορία…</option>{% for c in allcats %}<option value="{{ c.id }}">{{ '· '*(c.level-1) }}{{ c.name }}</option>{% endfor %}</select>
+      <select name="specialty" required><option value="">Ειδικότητα…</option>{% for s in active_specs %}<option value="{{ s }}">{{ s }}</option>{% endfor %}</select>
+      <button class="btn" type="submit"><i class="ti ti-plus"></i> Νέος κανόνας</button>
+    </form>
+  </div>
+
+</div>
+</body>
+</html>

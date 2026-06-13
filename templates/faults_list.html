@@ -50,6 +50,12 @@ td { padding:8px; border-bottom:1px solid #f5f5f5; }
       <button class="btn" type="submit"><i class="ti ti-filter"></i> Φίλτρο</button>
       <a href="/dashboard/faults?embed=1" class="muted" style="font-size:12px;text-decoration:none;">Καθαρισμός ✕</a>
     </form>
+    <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+      <span class="muted" style="font-size:12px;">Εξαγωγή φιλτραρισμένων:</span>
+      <a class="btn" href="/dashboard/faults/export?fmt=xlsx&{{ qs }}" style="background:#15803d;"><i class="ti ti-file-type-xls"></i> Excel</a>
+      <a class="btn" href="/dashboard/faults/export?fmt=csv&{{ qs }}" style="background:#475569;"><i class="ti ti-file-type-csv"></i> CSV</a>
+      <a class="btn" href="/dashboard/faults/export?fmt=pdf&{{ qs }}"><i class="ti ti-file-type-pdf"></i> PDF</a>
+    </div>
   </div>
 
   <div class="card">
@@ -76,7 +82,7 @@ td { padding:8px; border-bottom:1px solid #f5f5f5; }
             <td>{{ f.hotel.name if f.hotel else '—' }}</td>
             <td style="max-width:200px;">{{ f.category.name if f.category else '—' }}</td>
             <td><span class="badge" style="background:{{ PRIORITY_COLOR[f.priority][0] }};color:{{ PRIORITY_COLOR[f.priority][1] }};">{{ f.priority }}</span></td>
-            <td><span class="badge" style="background:{{ STATUS_COLOR[f.status][0] }};color:{{ STATUS_COLOR[f.status][1] }};">{{ STATUS_LABELS[f.status] }}</span></td>
+            <td><span class="badge" style="background:{{ STATUS_COLOR[f.status][0] }};color:{{ STATUS_COLOR[f.status][1] }};">{{ STATUS_LABELS[f.status] }}</span>{% set sl = sla_state(f) %}{% if sl[0]=='overdue' %} <span class="badge" style="background:#fee2e2;color:#dc2626;">⚠ {{ sl[1] }}</span>{% elif sl[0]=='stale' %} <span class="badge" style="background:#fef3c7;color:#b45309;">{{ sl[1] }}</span>{% endif %}</td>
             <td>{{ f.assignee.full_name if f.assignee else '—' }}</td>
             <td class="muted">{{ f.submitted_at.strftime('%d/%m/%y %H:%M') if f.submitted_at else '—' }}</td>
           </tr>
