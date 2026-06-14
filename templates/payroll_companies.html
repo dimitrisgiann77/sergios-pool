@@ -1,0 +1,34 @@
+{% import '_monitoring.html' as mp %}
+<!DOCTYPE html><html lang="el"><head>{{ mp.head('Μισθοδοσία — Εταιρείες', theme.primary) }}
+<style>
+ .card h3{margin:0 0 10px;font-size:15px;}
+ .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px;}
+ input,select{padding:6px 8px;border:1px solid #dbe3ea;border-radius:8px;}
+ .b{background:var(--accent,#185FA5);color:#fff;border:none;padding:7px 12px;border-radius:8px;cursor:pointer;}
+ table{width:100%;border-collapse:collapse;font-size:13px;}
+ td,th{padding:7px 8px;border-bottom:1px solid #eef2f6;text-align:left;vertical-align:top;}
+ th{font-size:11px;text-transform:uppercase;color:#64748b;}
+ .muted{color:#94a3b8;font-size:12px;}
+</style></head><body>
+{{ mp.topbar('building-bank', 'ΕΣΤΙΑ — Μισθοδοσία · Εταιρείες') }}
+<div class="container">
+  <div class="card"><h3>Νομικές οντότητες (εργοδότες)</h3>
+  <table>
+    <tr><th>Κωδ.</th><th>Νομική επωνυμία</th><th>ΑΦΜ</th><th>ΥΠΟΚ</th><th>Ξενοδοχεία</th><th>Ενεργή</th><th></th></tr>
+    {% for c in companies %}
+    <tr>
+      <form method="POST"><input type="hidden" name="id" value="{{ c.id }}">
+      <td><b>{{ c.code }}</b></td>
+      <td><input name="legal_name" value="{{ c.legal_name }}" style="width:240px;"></td>
+      <td><input name="vat" value="{{ c.vat or '' }}" placeholder="ΑΦΜ" style="width:110px;"></td>
+      <td><input name="subunit_code" value="{{ c.subunit_code or '' }}" placeholder="ΥΠΟΚ" style="width:80px;"></td>
+      <td class="muted">{{ (hcount.get(c.id) or [])|join(', ') or '—' }}</td>
+      <td><select name="active"><option value="1" {{ 'selected' if c.active }}>Ναι</option><option value="0" {{ 'selected' if not c.active }}>Όχι</option></select></td>
+      <td><button class="b" type="submit">Αποθήκευση</button></td>
+      </form>
+    </tr>
+    {% endfor %}
+  </table>
+  <p class="muted">Ο χάρτης ξενοδοχείου→εταιρείας τίθεται αυτόματα (seed). ΑΦΜ/ΥΠΟΚ συμπληρώνονται εδώ ή από το import Epsilon.</p>
+  </div>
+</div></body></html>

@@ -1,0 +1,31 @@
+{% import '_monitoring.html' as mp %}
+<!DOCTYPE html><html lang="el"><head>{{ mp.head('Μισθοδοσία — Συντελεστές 2026', theme.primary) }}
+<style>
+ .card h3{margin:0 0 10px;font-size:15px;}
+ .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;}
+ label{font-size:13px;min-width:230px;}
+ input{padding:6px 8px;border:1px solid #dbe3ea;border-radius:8px;width:110px;}
+ .b{background:var(--accent,#185FA5);color:#fff;border:none;padding:8px 14px;border-radius:8px;cursor:pointer;}
+ table{border-collapse:collapse;font-size:13px;margin-top:8px;}td,th{padding:5px 12px;border-bottom:1px solid #eef2f6;text-align:left;}
+ .note{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 12px;font-size:12px;color:#92400e;margin-top:12px;}
+</style></head><body>
+{{ mp.topbar('percentage', 'ΕΣΤΙΑ — Μισθοδοσία · Συντελεστές 2026') }}
+<div class="container">
+  <div class="card"><h3>Εισφορές & φόρος (έτος {{ r.year }})</h3>
+  <form method="POST">
+    <div class="row"><label>ΕΦΚΑ εργαζομένου (κύριο) %</label><input name="efka_employee_pct" value="{{ r.efka_employee_pct }}"></div>
+    <div class="row"><label>ΕΦΚΑ εργοδότη (κύριο) %</label><input name="efka_employer_pct" value="{{ r.efka_employer_pct }}"></div>
+    <div class="row"><label>Επικουρικό εργαζομένου %</label><input name="efka_aux_employee_pct" value="{{ r.efka_aux_employee_pct }}"></div>
+    <div class="row"><label>Επικουρικό εργοδότη %</label><input name="efka_aux_employer_pct" value="{{ r.efka_aux_employer_pct }}"></div>
+    <div class="row"><label>Αφορολόγητο όριο €</label><input name="tax_free_threshold" value="{{ r.tax_free_threshold }}"></div>
+    <div class="row"><label>Ψηφιακό τέλος €</label><input name="digital_fee" value="{{ r.digital_fee }}"></div>
+    <div class="row"><label>Σημείωση</label><input name="note" value="{{ r.note or '' }}" style="width:360px;"></div>
+    <button class="b" type="submit">Αποθήκευση συντελεστών</button>
+  </form>
+  <h3 style="margin-top:16px;">Κλίμακα ΦΜΥ (ενδεικτική)</h3>
+  <table><tr><th>Έως (€)</th><th>Συντελεστής %</th></tr>
+    {% for b in brackets %}<tr><td>{{ b[0] if b[0] is not none else '∞' }}</td><td>{{ b[1] }}</td></tr>{% endfor %}
+  </table>
+  <div class="note">Οι συντελεστές χρησιμεύουν <b>μόνο για εκτίμηση/πρόβλεψη</b>. Τα πραγματικά νόμιμα καθαρά & το κόστος εργοδότη έρχονται από το <b>import Epsilon</b> (απόφαση).</div>
+  </div>
+</div></body></html>

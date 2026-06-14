@@ -314,11 +314,16 @@ def inject_theme():
     return {'theme': get_theme()}
 
 # έκδοση/build για το footer του shell
-APP_VERSION = '12.46'
-APP_BUILD   = '326'
+APP_VERSION = '12.47'
+APP_BUILD   = '327'
 
 # ── v12.36 — Ιστορικό εκδόσεων («Τι νέο»). Newest first. ──────────────────────
 CHANGELOG = [
+    {'v': '12.47', 'b': '327', 'date': '14/06/2026', 'time': '15:45', 'title': 'Μισθοδοσία — Θεμέλιο (Φάση 1)',
+     'items': ['Νέα ομάδα μενού «Οικονομικά» με σελίδα «Μισθοδοσία» (μόνο διαχειριστές).',
+               'Μητρώο εργαζομένων ανά εταιρεία + καρτέλα με ευαίσθητα στοιχεία (ΑΦΜ/ΑΜΚΑ/ΙΒΑΝ) και συμφωνία.',
+               'Νομικές οντότητες (εργοδότες) με αυτόματη αντιστοίχιση ξενοδοχείου→εταιρεία + συντελεστές 2026 (επεξεργάσιμοι).',
+               'Η μηχανή υπολογισμού, τα εκκαθαριστικά και η πρόβλεψη έρχονται στη Φάση 2.']},
     {'v': '12.46', 'b': '326', 'date': '14/06/2026', 'time': '14:45', 'title': 'Βοήθεια: FAQ & Επίλυση προβλημάτων',
      'items': ['Νέα σελίδα «Βοήθεια (FAQ)» στο μενού Ενημέρωση — συχνές ερωτήσεις + επίλυση προβλημάτων με αναπτυσσόμενες απαντήσεις.',
                'Οι οδηγίες διαχείρισης εμφανίζονται μόνο σε διαχειριστές.']},
@@ -652,6 +657,7 @@ class Hotel(db.Model):
     id         = db.Column(db.Integer, primary_key=True)
     name       = db.Column(db.String(120), unique=True, nullable=False)
     is_active  = db.Column(db.Boolean, default=True)
+    company_id = db.Column(db.Integer)   # v12.47 — Μισθοδοσία: νομικός εργοδότης (payroll.Company)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     pools = db.relationship('Pool', backref='hotel', order_by='Pool.name')
 
@@ -2157,7 +2163,8 @@ ROADMAP = [
         {'t': 'Πρόγραμμα Εργασίας — βάρδιες, κανόνες, υποβολή λογιστηρίου', 's': 'done'},
         {'t': 'Οργανόγραμμα (εργαζόμενοι σε τμήματα) + εκκαθάριση διπλών', 's': 'done'},
         {'t': 'Multi-file importer ιστορικών (παλιά έτη/προσωπικό)', 's': 'progress'},
-        {'t': 'Πληρωτέο συμφωνίας + προφίλ μισθοδοσίας (τράπεζα/φάκελος)', 's': 'planned'},
+        {'t': 'Μισθοδοσία — θεμέλιο: μητρώο/εταιρείες/PII/συντελεστές (Φ1)', 's': 'progress'},
+        {'t': 'Μισθοδοσία — μηχανή Management+Λογιστήριο, εκκαθαριστικά, πρόβλεψη (Φ2+)', 's': 'planned'},
         {'t': 'Αξιολόγηση προσωπικού (πάνω στα ερωτηματολόγια)', 's': 'planned'},
     ]},
     {'area': 'Guest experience / Υποδοχή', 'items': [
@@ -3274,6 +3281,7 @@ import imports         # v12.29 — Κέντρο Εισαγωγής Δεδομέ
 import backup          # v12.31 — Module Αντιγράφων Ασφαλείας (BackupLog + routes)· ΠΡΙΝ το create_all
 import schedule        # v12.40 — Module Πρόγραμμα Εργασίας (μοντέλα + routes)· ΠΡΙΝ το create_all
 import extras          # v12.43 — per-role μενού + Feedback· ΠΡΙΝ το create_all
+import payroll         # v12.47 — Module Μισθοδοσία Φ1 (μοντέλα + routes)· ΠΡΙΝ το create_all
 init_db()
 backup.ensure_backup_columns()   # v12.33 — auto-migration στηλών backup_log + seed ρυθμίσεων
 seed_team()
@@ -3281,6 +3289,8 @@ faults.seed_faults()   # seed κατηγορίες/ειδικότητες/SLA (i
 surveys.seed_surveys() # seed δείγμα ερωτηματολογίου (idempotent)
 schedule.ensure_schedule_columns()  # v12.40
 schedule.seed_schedule()            # v12.40 (idempotent)
+payroll.ensure_payroll_columns()    # v12.47 — Hotel.company_id
+payroll.seed_payroll()              # v12.47 (idempotent)
 start_scheduler()
 backup.start_backup_scheduler()  # v12.31 — ημερήσιο backup -> SharePoint (αν BACKUP_ENABLED)
 

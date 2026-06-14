@@ -1,0 +1,53 @@
+{% import '_monitoring.html' as mp %}
+<!DOCTYPE html><html lang="el"><head>{{ mp.head('Μισθοδοσία — Μητρώο', theme.primary) }}
+<style>
+ .card h3{margin:0 0 10px;font-size:15px;}
+ table{width:100%;border-collapse:collapse;font-size:13px;}
+ td,th{padding:7px 8px;border-bottom:1px solid #eef2f6;text-align:left;}
+ th{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#64748b;}
+ .pill{padding:2px 9px;border-radius:10px;font-size:11px;font-weight:600;}
+ .ok{background:#dcfce7;color:#166534;} .no{background:#fee2e2;color:#b91c1c;}
+ .b{background:var(--accent,#185FA5);color:#fff;border:none;padding:6px 11px;border-radius:8px;cursor:pointer;text-decoration:none;font-size:13px;}
+ .muted{color:#94a3b8;} .grp{margin:18px 0 6px;font-weight:700;color:var(--accent,#185FA5);}
+ .note{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;font-size:12px;color:#475569;margin-top:12px;}
+</style></head><body>
+{{ mp.topbar('cash', 'ΕΣΤΙΑ — Μισθοδοσία · Μητρώο') }}
+<div class="container">
+
+  {{ mp.kpis([
+    {'n': companies|length, 'label':'Εταιρείες', 'color':'#185FA5', 'href':'/dashboard/payroll/companies?embed=1'},
+    {'n': n_emp, 'label':'Εργαζόμενοι', 'color':'#0e9f6e'},
+    {'n': n_agree, 'label':'Με συμφωνία', 'color':'#d97706'},
+    {'n': n_pii, 'label':'Με ΑΦΜ/PII', 'color':'#7e22ce'},
+  ]) }}
+
+  <div class="card">
+    <h3>Μητρώο εργαζομένων ανά εταιρεία</h3>
+    {% set ns = namespace(cur='') %}
+    <table>
+      <tr><th>Ονοματεπώνυμο</th><th>Τμήμα</th><th>Ξενοδοχείο</th><th>Συμφωνία</th><th>PII</th><th></th></tr>
+      {% for r in rows %}
+        {% set cname = r.company.legal_name if r.company else 'Χωρίς εταιρεία' %}
+        {% if cname != ns.cur %}
+          <tr><td colspan="6" class="grp">{{ cname }}</td></tr>
+          {% set ns.cur = cname %}
+        {% endif %}
+        <tr>
+          <td>{{ r.user.full_name or r.user.username }}</td>
+          <td>{{ r.profile.position if r.profile and r.profile.position else (r.pii.ergani_specialty if r.pii else '') }}</td>
+          <td class="muted">{{ r.hotel_name }}</td>
+          <td>{% if r.profile and r.profile.agreement_amount %}<b>{{ '%.0f'|format(r.profile.agreement_amount) }}€</b> <span class="muted">{{ r.profile.agreement_type }}</span>{% else %}<span class="pill no">—</span>{% endif %}</td>
+          <td>{% if r.pii and r.pii.afm %}<span class="pill ok">✓</span>{% else %}<span class="pill no">λείπει</span>{% endif %}</td>
+          <td><a class="b" href="/dashboard/payroll/employee/{{ r.user.id }}?embed=1">Καρτέλα</a></td>
+        </tr>
+      {% else %}
+        <tr><td colspan="6" class="muted">Κανένας εργαζόμενος στο μητρώο ακόμη. Εισαγωγή από «Πρόγραμμα · Εισαγωγή».</td></tr>
+      {% endfor %}
+    </table>
+    <div class="note">
+      <b>Φάση 1 (θεμέλιο).</b> Εδώ είναι το μητρώο, οι εταιρείες, τα ευαίσθητα στοιχεία (PII) και οι συντελεστές 2026.
+      Η <b>μηχανή υπολογισμού</b> (Management + Λογιστήριο), τα εκκαθαριστικά, το reporting και η πρόβλεψη έρχονται στη Φάση 2.
+      Η εικόνα λογιστηρίου (νόμιμα καθαρά/εισφορές) θα προέρχεται από <b>import Epsilon</b>.
+    </div>
+  </div>
+</div></body></html>

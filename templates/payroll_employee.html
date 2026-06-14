@@ -1,0 +1,70 @@
+{% import '_monitoring.html' as mp %}
+<!DOCTYPE html><html lang="el"><head>{{ mp.head('Καρτέλα εργαζομένου', theme.primary) }}
+<style>
+ .card h3{margin:0 0 10px;font-size:15px;}
+ .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+ .row{display:flex;gap:8px;align-items:center;margin-bottom:8px;}
+ label{font-size:13px;min-width:150px;color:#475569;}
+ input,select{padding:6px 8px;border:1px solid #dbe3ea;border-radius:8px;flex:1;}
+ .b{background:var(--accent,#185FA5);color:#fff;border:none;padding:8px 14px;border-radius:8px;cursor:pointer;}
+ .meta{font-size:13px;color:#475569;line-height:1.7;}
+ .pill{padding:2px 9px;border-radius:10px;font-size:11px;font-weight:600;}
+ .ok{background:#dcfce7;color:#166534;} .no{background:#fee2e2;color:#b91c1c;}
+ @media(max-width:760px){.grid{grid-template-columns:1fr;}}
+</style></head><body>
+{{ mp.topbar('user', 'ΕΣΤΙΑ — Καρτέλα: ' ~ (u.full_name or u.username)) }}
+<div class="container">
+  <a href="/dashboard/payroll?embed=1" style="font-size:13px;">← Πίσω στο μητρώο</a>
+
+  <div class="grid" style="margin-top:10px;">
+    <div class="card"><h3>Στοιχεία</h3>
+      <div class="meta">
+        <div><b>Ονοματεπώνυμο:</b> {{ u.full_name or u.username }}</div>
+        <div><b>Εταιρεία:</b> {{ comp.legal_name if comp else '—' }}</div>
+        <div><b>Ξενοδοχείο (home):</b> {{ hotel.name if hotel else '—' }}</div>
+        <div><b>Σύνδεση:</b> {{ 'Ναι' if u.login_enabled else 'Όχι (μόνο μητρώο)' }}</div>
+      </div>
+    </div>
+
+    <div class="card"><h3>Συμφωνία (Management)</h3>
+      {% if prof %}
+      <form method="POST"><input type="hidden" name="action" value="agreement">
+        <div class="row"><label>Τύπος</label>
+          <select name="agreement_type">
+            {% for t in ['Μηνιαίος','Management','Ωρομίσθιος'] %}<option value="{{ t }}" {{ 'selected' if prof.agreement_type==t }}>{{ t }}</option>{% endfor %}
+          </select></div>
+        <div class="row"><label>Συμφωνημένο ποσό €</label><input name="agreement_amount" value="{{ prof.agreement_amount or '' }}"></div>
+        <div class="meta">Ημερομίσθιο: <b>{{ '%.2f'|format(prof.day_wage) }}€</b> · Ωρομίσθιο (÷8): <b>{{ '%.2f'|format(prof.hour_wage) }}€</b></div>
+        <button class="b" type="submit" style="margin-top:8px;">Αποθήκευση συμφωνίας</button>
+      </form>
+      {% else %}
+      <p class="meta">Δεν υπάρχει EmploymentProfile για τον εργαζόμενο (δημιουργείται από «Πρόγραμμα · Προσωπικό»/Εισαγωγή).</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card"><h3>Ευαίσθητα στοιχεία (PII) — {% if pii and pii.afm %}<span class="pill ok">συμπληρωμένο</span>{% else %}<span class="pill no">ελλιπές</span>{% endif %}</h3>
+    <form method="POST"><input type="hidden" name="action" value="pii">
+    <div class="grid">
+      <div class="row"><label>ΑΦΜ</label><input name="afm" value="{{ pii.afm if pii else '' }}"></div>
+      <div class="row"><label>ΑΜΚΑ</label><input name="amka" value="{{ pii.amka if pii else '' }}"></div>
+      <div class="row"><label>Α.Μ. ΙΚΑ</label><input name="ika_am" value="{{ pii.ika_am if pii else '' }}"></div>
+      <div class="row"><label>Όνομα πατρός</label><input name="father_name" value="{{ pii.father_name if pii else '' }}"></div>
+      <div class="row"><label>Ειδικότητα (ΕΡΓΑΝΗ)</label><input name="ergani_specialty" value="{{ pii.ergani_specialty if pii else '' }}"></div>
+      <div class="row"><label>Είδος εργαζ.</label><input name="employment_kind" value="{{ pii.employment_kind if pii else '' }}"></div>
+      <div class="row"><label>Διάρκεια σύμβασης</label><input name="contract_type" value="{{ pii.contract_type if pii else '' }}"></div>
+      <div class="row"><label>Τράπεζα</label><input name="bank_name" value="{{ pii.bank_name if pii else '' }}"></div>
+      <div class="row"><label>IBAN</label><input name="bank_iban" value="{{ pii.bank_iban if pii else '' }}"></div>
+      <div class="row"><label>Πρόσληψη</label><input type="date" name="hired_at" value="{{ pii.hired_at.isoformat() if pii and pii.hired_at else '' }}"></div>
+      <div class="row"><label>Αποχώρηση</label><input type="date" name="left_at" value="{{ pii.left_at.isoformat() if pii and pii.left_at else '' }}"></div>
+    </div>
+    <button class="b" type="submit" style="margin-top:8px;">Αποθήκευση PII</button>
+    </form>
+  </div>
+
+  {% if agreements %}
+  <div class="card"><h3>Ιστορικό συμφωνιών</h3>
+    <div class="meta">{% for a in agreements %}<div>{{ a.effective_from }} → {{ a.effective_to or 'τρέχουσα' }} · {{ a.agreement_type }} · {{ a.agreed_amount }}€</div>{% endfor %}</div>
+  </div>
+  {% endif %}
+</div></body></html>
