@@ -410,7 +410,7 @@ def seed_schedule():
 # ── IMPORT (workbook προγράμματος -> χρήστες/τμήματα/αναθέσεις) ────────────────
 CODE_HOTELNAME = {
     'AST': 'Asterias', 'CNT': 'Central', 'SRG': 'Sergios',
-    'PSV': 'Piskopiano', 'IRO': 'Iro', 'PLM': 'Palmera',  # v12.50: PLM->Palmera (μισθοδοσία)
+    'PSV': 'Piskopiano', 'IRO': 'Iro', 'PLM': 'Palm',  # v12.52: PLM = Palm Island Suites
 }
 _LABELS = {'τμημα': 'dept', 'ειδικοτητα': 'spec', 'εταιρεια': 'comp', 'υποκ': 'upok',
            'επωνυμο': 'epon', 'ονομα': 'onoma'}

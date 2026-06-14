@@ -43,7 +43,7 @@ COMPANY_CODE = {
 }
 HOTEL_NAME_CODE = {
     'asterias': 'AST', 'central': 'CNT', 'iro': 'IRO', 'ηρω': 'IRO',
-    'sergios': 'SRG', 'piskopiano': 'PSV', 'palmera': 'PLM', 'condian': 'CND',
+    'sergios': 'SRG', 'piskopiano': 'PSV', 'palm': 'PLM', 'condian': 'CND',
 }
 
 
