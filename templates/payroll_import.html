@@ -24,13 +24,16 @@ html[data-theme="dark"] .dropzone{background:#16202c;border-color:#33475b;color:
       <div class="row">Εταιρεία (προαιρετικό — αλλιώς από το όνομα αρχείου):
         <select name="company_id"><option value="">— αυτόματα —</option>{% for c in companies %}<option value="{{ c.id }}">{{ c.legal_name }}</option>{% endfor %}</select>
       </div>
-      <div id="dz" class="dropzone"><i class="ti ti-cloud-upload"></i>Σύρε εδώ το αρχείο Epsilon (.xlsx) ή κάνε κλικ<input type="file" name="file" accept=".xlsx,.xls" id="dzin" style="display:none;"><div id="dzlist" class="dzlist"></div></div>
+      <div id="dz" class="dropzone"><i class="ti ti-cloud-upload"></i>Σύρε εδώ ΕΝΑ Ή ΠΟΛΛΑ αρχεία Epsilon (.xlsx) ή κάνε κλικ<input type="file" name="file" accept=".xlsx,.xls" multiple id="dzin" style="display:none;"><div id="dzlist" class="dzlist"></div></div>
       <button class="b" type="submit"><i class="ti ti-upload"></i> Εισαγωγή</button>
     </form>
     <p class="muted"><b>Δημιουργεί & κλειδώνει το μητρώο εργαζομένων</b> από το Epsilon (η επίσημη πηγή): χρήστες (login-off) + ΑΦΜ/ΑΜΚΑ/ειδικότητα/τράπεζα/ξενοδοχείο + νόμιμα καθαρά. Τα κλειδωμένα <b>δεν τα γράφουν/σβήνουν</b> άλλες πηγές. Ταίριασμα με ΑΦΜ → όνομα. Idempotent (ίδιο αρχείο = χωρίς διπλά). Φορτωμένες γραμμές: <b>{{ n_legal }}</b>.</p>
-    {% if result %}
-      {% if result.error %}<div class="err">Σφάλμα: {{ result.error }}</div>
-      {% else %}<div class="ok">✓ {{ result.company or 'Άγνωστη εταιρεία' }} · περίοδοι {{ result.periods }} · γραμμές {{ result.rows }} · <b>νέοι εργαζόμενοι {{ result.created }}</b> · δώρα/άδεια {{ result.extras }} · ΑΦΜ/PII σε {{ result.pii_filled }} · κλειδωμένο μητρώο ✓.</div>{% endif %}
+    {% if results %}
+      <h3 style="margin-top:14px;">Αποτελέσματα ({{ results|length }} αρχεία)</h3>
+      {% for r in results %}
+        {% if r.error %}<div class="err"><b>{{ r._file }}</b> — Σφάλμα: {{ r.error }}</div>
+        {% else %}<div class="ok"><b>{{ r._file }}</b> → {{ r.company or 'Άγνωστη εταιρεία' }} · περίοδοι {{ r.periods }} · γραμμές {{ r.rows }} · <b>νέοι {{ r.created }}</b> · δώρα/άδεια {{ r.extras }} · ΑΦΜ/PII {{ r.pii_filled }} 🔒</div>{% endif %}
+      {% endfor %}
     {% endif %}
   </div>
 </div><script>(function(){var dz=document.getElementById('dz'),inp=document.getElementById('dzin'),lst=document.getElementById('dzlist');if(!dz)return;

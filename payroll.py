@@ -546,23 +546,30 @@ def _period_kind(period_raw):
     return _KIND_MAP.get(n, period_raw or 'extra')
 
 _HOTEL_KW = {
-    'AST': ['asterias', 'αστεριας'], 'CNT': ['central', 'κεντρικο', 'χερσονησ', 'hersoniss'],
+    'AST': ['asterias', 'αστεριας'], 'CNT': ['central', 'χερσονησ', 'hersoniss'],  # ΟΧΙ 'κεντρικο' (=έδρα)
     'IRO': ['iro', 'ηρω'], 'SRG': ['sergios', 'σεργιος', 'σεργιου'],
     'PSV': ['piskopiano', 'πισκοπιανο'], 'PLM': ['palm', 'παλμ'], 'CND': ['condian', 'κονντιαν'],
 }
 def _hotel_from_epsilon(row, comp=None):
-    """Ξενοδοχείο από ΥΠΟΚ/τμήμα Epsilon (λατ.+ελλ.)· fallback: μοναδικό ξεν. της εταιρείας."""
+    """Ξενοδοχείο: ΕΤΑΙΡΕΙΑ-ΠΡΩΤΑ. Μονοξενοδοχειακή εταιρεία -> το ξεν. της.
+    Πολυξενοδοχειακή (Γιαννουλάκης: AST/CNT/IRO) -> disambiguate από ΥΠΟΚ.
+    («Κεντρικό» = έδρα/λογιστικό υποκατάστημα, ΟΧΙ ξενοδοχείο)."""
     blob = _norm(str(row.get('subunit_desc') or '') + ' ' + str(row.get('dept_desc') or ''))
+    if comp:
+        hs = Hotel.query.filter_by(company_id=comp.id).all()
+        if len(hs) == 1:
+            return hs[0]
+        for h in hs:                       # πολλά ξεν. -> διάλεξε με βάση το ΥΠΟΚ
+            code = hotel_code(h)
+            if any(_norm(k) in blob for k in _HOTEL_KW.get(code, [])):
+                return h
+        return None                        # έδρα/«Κεντρικό» -> χωρίς ξεν.
+    # χωρίς εταιρεία: καθαρό keyword
     for code, kws in _HOTEL_KW.items():
         if any(_norm(k) in blob for k in kws):
             for h in Hotel.query.all():
                 if hotel_code(h) == code:
                     return h
-    # fallback: αν η εταιρεία έχει ΑΚΡΙΒΩΣ ένα ξενοδοχείο
-    if comp:
-        hs = Hotel.query.filter_by(company_id=comp.id).all()
-        if len(hs) == 1:
-            return hs[0]
     return None
 
 def _create_locked_employee(row):
@@ -809,19 +816,23 @@ def payroll_run_view(rid):
 def payroll_import():
     if not _padmin():
         return redirect(url_for('login'))
-    result = None
+    results = []
     if request.method == 'POST':
-        f = request.files.get('file')
+        files = request.files.getlist('file')
         cid = request.form.get('company_id', type=int)
-        if f and f.filename:
+        for f in files:
+            if not (f and f.filename):
+                continue
             try:
-                result = import_epsilon_bytes(f.read(), filename=f.filename, company_id=cid)
-                log_activity('payroll_epsilon_import', '%s -> %s' % (f.filename, result))
+                r = import_epsilon_bytes(f.read(), filename=f.filename, company_id=cid)
             except Exception as e:
-                result = {'error': str(e)}
+                r = {'error': str(e)}
+            r['_file'] = f.filename
+            results.append(r)
+        log_activity('payroll_epsilon_import', '%d αρχεία' % len(results))
     companies = Company.query.filter_by(active=True).order_by(Company.legal_name).all()
     n_legal = LegalNetImport.query.count()
-    return render_template('payroll_import.html', companies=companies, result=result,
+    return render_template('payroll_import.html', companies=companies, results=results,
         n_legal=n_legal, is_admin=is_admin())
 
 # ══════════════════════════════════════════════════════════════════════════════
