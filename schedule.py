@@ -626,19 +626,32 @@ def validate_hotel_week(hotel_id, week_start):
     return issues
 
 
-# ── ROUTE: Board (multi-week: επιλογή ξενοδοχείου/τμήματος + Ν εβδομάδες) ──────
-def _build_block(hotel_id, dept_id, week_start, user):
-    days, rows = week_grid(hotel_id, dept_id, week_start)
+# ── ROUTE: Board (multi-week + πολλαπλά τμήματα δυναμικά) ──────────────────────
+def _depts_present(hotel_id):
+    """Τμήματα που έχουν εργαζόμενους στο ξενοδοχείο (για chips)."""
+    if not hotel_id:
+        return Department.query.filter_by(active=True).order_by(Department.sort).all()
+    ids = {u.department_id for u in User.query.filter(User.is_active == True,
+            User.home_hotel_id == hotel_id, User.department_id != None).all()}
+    if not ids:
+        return Department.query.filter_by(active=True).order_by(Department.sort).all()
+    return Department.query.filter(Department.id.in_(ids)).order_by(Department.sort, Department.name).all()
+
+def _build_block(hotel_id, dept_list, week_start, user):
+    days = [week_start + timedelta(days=i) for i in range(7)]
+    deptgrids = []
+    for d in dept_list:
+        _, rows = week_grid(hotel_id, d.id, week_start)
+        deptgrids.append({'dept': d, 'rows': rows})
     sub = None
     if hotel_id:
         sub = (ScheduleSubmission.query.filter_by(hotel_id=hotel_id, week_start=week_start)
                .order_by(ScheduleSubmission.version.desc()).first())
     return {
-        'week_start': week_start, 'days': days, 'rows': rows,
+        'week_start': week_start, 'days': days, 'deptgrids': deptgrids,
         'editable': week_editable(week_start, user) and can_edit_schedule(),
         'issues': validate_hotel_week(hotel_id, week_start) if hotel_id else [],
-        'deadline': week_deadline(week_start), 'sub': sub,
-        'iso': week_start.isoformat(),
+        'deadline': week_deadline(week_start), 'sub': sub, 'iso': week_start.isoformat(),
         'label': f"{week_start.strftime('%d/%m')} – {(week_start + timedelta(days=6)).strftime('%d/%m/%Y')}",
     }
 
@@ -649,24 +662,20 @@ def schedule_board():
     user = current_user()
     hotels = allowed_hotels(user)
     hotel_id = request.args.get('hotel_id', type=int) or active_hotel_id() or (hotels[0].id if hotels else None)
-    depts = Department.query.filter_by(active=True).order_by(Department.sort, Department.name).all()
-    dept_id = request.args.get('department_id', type=int) or (depts[0].id if depts else None)
+    dept_list = _depts_present(hotel_id)
     week_start = _week_arg()
     pol = get_policy()
     horizon = max(1, int(pol.get('planning_horizon_weeks', 8)))
-    weeks = request.args.get('weeks', type=int) or 1
-    weeks = max(1, min(weeks, horizon))
-    blocks = [_build_block(hotel_id, dept_id, week_start + timedelta(days=7 * i), user) for i in range(weeks)]
+    weeks = max(1, min(request.args.get('weeks', type=int) or 1, horizon))
+    blocks = [_build_block(hotel_id, dept_list, week_start + timedelta(days=7 * i), user) for i in range(weeks)]
     shift_types = ShiftType.query.filter_by(active=True).order_by(ShiftType.sort).all()
     shift_lookup = {st.code: st for st in shift_types}
     shift_types_json = json.dumps([{'code': st.code, 'color': st.color} for st in shift_types], ensure_ascii=False)
-    cur_dept = Department.query.get(dept_id) if dept_id else None
     cur_hotel = Hotel.query.get(hotel_id) if hotel_id else None
     return render_template('schedule_board.html',
         shift_lookup=shift_lookup, shift_types_json=shift_types_json,
-        hotels=hotels, depts=depts, hotel_id=hotel_id, dept_id=dept_id,
-        cur_dept=cur_dept, cur_hotel=cur_hotel, weekdays=WEEKDAYS_EL,
-        shift_types=shift_types, blocks=blocks, weeks=weeks, horizon=horizon,
+        hotels=hotels, hotel_id=hotel_id, cur_hotel=cur_hotel, dept_list=dept_list,
+        weekdays=WEEKDAYS_EL, shift_types=shift_types, blocks=blocks, weeks=weeks, horizon=horizon,
         week_start=week_start, week_start_iso=week_start.isoformat(),
         prev_week=(week_start - timedelta(days=7)).isoformat(),
         next_week=(week_start + timedelta(days=7)).isoformat(),
@@ -737,9 +746,9 @@ def schedule_copyprev():
     dept_id = request.form.get('department_id', type=int)
     week_start = monday_of(datetime.strptime(request.form['week'], '%Y-%m-%d').date())
     if not week_editable(week_start, user):
-        return redirect(f'/dashboard/schedule?hotel_id={hotel_id}&department_id={dept_id}&week={week_start}&embed=1&err=locked')
+        return redirect(f'/dashboard/schedule?hotel_id={hotel_id}&week={week_start}&embed=1&err=locked')
     prev = week_start - timedelta(days=7)
-    users = _dept_users(hotel_id, dept_id)
+    users = _dept_users(hotel_id, dept_id) if dept_id else User.query.filter(User.is_active == True, User.home_hotel_id == hotel_id).all()
     n = 0
     for u in users:
         for i in range(7):
@@ -757,7 +766,7 @@ def schedule_copyprev():
             n += 1
     db.session.commit()
     log_activity('schedule_copyprev', f'{n} κελιά', hotel_id=hotel_id)
-    return redirect(f'/dashboard/schedule?hotel_id={hotel_id}&department_id={dept_id}&week={week_start}&embed=1&ok=copied')
+    return redirect(f'/dashboard/schedule?hotel_id={hotel_id}&week={week_start}&embed=1&ok=copied')
 
 
 # ── ΥΠΟΒΟΛΗ (ενοποιημένη ανά ξενοδοχείο-εβδομάδα) ─────────────────────────────

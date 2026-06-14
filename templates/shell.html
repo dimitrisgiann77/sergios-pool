@@ -265,34 +265,49 @@ html[data-theme="dark"] .nm-foot{border-top-color:#243140;}
     <div class="scrim" onclick="document.getElementById('app').classList.remove('open')"></div>
     <nav class="side" id="side">
       {% if is_admin %}<div class="item" data-ws="operations admin" data-url="/overview?embed=1"><i class="ti ti-dashboard"></i> Dashboard</div>{% endif %}
-      {% if can_log %}
+
+      {% if menu_show('pools') or menu_show('water') %}
       <div class="grp" data-ws="operations staffhub">Καταγραφές</div>
-      <div class="item" data-ws="operations staffhub" data-url="/pools?embed=1"><i class="ti ti-pool"></i> Πισίνες</div>
-      <div class="item" data-ws="operations staffhub" data-url="/app?embed=1"><i class="ti ti-droplet"></i> Νερά Χρήσης</div>
+      {% if menu_show('pools') %}<div class="item" data-ws="operations staffhub" data-url="/pools?embed=1"><i class="ti ti-pool"></i> Πισίνες</div>{% endif %}
+      {% if menu_show('water') %}<div class="item" data-ws="operations staffhub" data-url="/app?embed=1"><i class="ti ti-droplet"></i> Νερά Χρήσης</div>{% endif %}
       {% endif %}
+
+      {% if menu_show('pools_dash') or menu_show('records') or menu_show('coverage') or menu_show('faults_board') or is_admin %}
       <div class="grp" data-ws="operations">Παρακολούθηση</div>
-      <div class="item" data-ws="operations" data-url="/pools/dashboard?embed=1"><i class="ti ti-layout-dashboard"></i> Πίνακας Πισινών</div>
+      {% if menu_show('pools_dash') %}<div class="item" data-ws="operations" data-url="/pools/dashboard?embed=1"><i class="ti ti-layout-dashboard"></i> Πίνακας Πισινών</div>{% endif %}
       {% if is_admin %}<div class="item" data-ws="operations" data-url="/dashboard?embed=1"><i class="ti ti-droplet-filled"></i> Πίνακας Νερών</div>{% endif %}
-      <div class="item" data-ws="operations" data-url="/records?embed=1"><i class="ti ti-list-details"></i> Records</div>
-      <div class="item" data-ws="operations" data-url="/pools/coverage?embed=1"><i class="ti ti-calendar-stats"></i> Εβδομαδιαία κάλυψη</div>
-      <div class="item" data-ws="operations" data-url="/dashboard/faults?embed=1"><i class="ti ti-alert-triangle"></i> Πίνακας Βλαβών</div>
+      {% if menu_show('records') %}<div class="item" data-ws="operations" data-url="/records?embed=1"><i class="ti ti-list-details"></i> Records</div>{% endif %}
+      {% if menu_show('coverage') %}<div class="item" data-ws="operations" data-url="/pools/coverage?embed=1"><i class="ti ti-calendar-stats"></i> Εβδομαδιαία κάλυψη</div>{% endif %}
+      {% if menu_show('faults_board') %}<div class="item" data-ws="operations" data-url="/dashboard/faults?embed=1"><i class="ti ti-alert-triangle"></i> Πίνακας Βλαβών</div>{% endif %}
+      {% endif %}
+
+      {% if menu_show('fault_submit') or menu_show('areas') or menu_show('areas_dash') %}
       <div class="grp" data-ws="operations">Συντήρηση</div>
-      <div class="item" data-ws="operations" data-url="/fault?embed=1"><i class="ti ti-tool"></i> Δήλωση βλάβης</div>
-      {% if can_log %}<div class="item" data-ws="operations" data-url="/areas?embed=1"><i class="ti ti-checklist"></i> Καταγραφή τομέων</div>{% endif %}
-      <div class="item" data-ws="operations" data-url="/areas/dashboard?embed=1"><i class="ti ti-clipboard-list"></i> Πίνακας τομέων</div>
-      {% if is_admin %}
+      {% if menu_show('fault_submit') %}<div class="item" data-ws="operations" data-url="/fault?embed=1"><i class="ti ti-tool"></i> Δήλωση βλάβης</div>{% endif %}
+      {% if menu_show('areas') %}<div class="item" data-ws="operations" data-url="/areas?embed=1"><i class="ti ti-checklist"></i> Καταγραφή τομέων</div>{% endif %}
+      {% if menu_show('areas_dash') %}<div class="item" data-ws="operations" data-url="/areas/dashboard?embed=1"><i class="ti ti-clipboard-list"></i> Πίνακας τομέων</div>{% endif %}
+      {% endif %}
+
+      {% if menu_show('surveys') %}
       <div class="grp" data-ws="operations admin">Υποδοχή</div>
       <div class="item" data-ws="operations admin" data-url="/dashboard/surveys?embed=1"><i class="ti ti-clipboard-check"></i> Ερωτηματολόγια</div>
+      {% endif %}
 
+      {% if menu_show('schedule') %}
       <div class="grp" data-ws="operations admin">Προσωπικό</div>
       <div class="item" data-ws="operations admin" data-url="/dashboard/schedule?embed=1"><i class="ti ti-calendar-week"></i> Πρόγραμμα Εργασίας</div>
       {% if is_admin %}<div class="item" data-ws="operations admin" data-url="/dashboard/schedule/submissions?embed=1"><i class="ti ti-send"></i> Υποβολές (Λογιστήριο)</div>{% endif %}
       {% endif %}
-      <div class="grp" data-ws="operations admin">Γενικά</div>
-      <div class="item" data-ws="operations admin" data-url="/profile?embed=1"><i class="ti ti-user"></i> Το προφίλ μου</div>
+
+      <div class="grp" data-ws="operations admin">Ενημέρωση</div>
+      {% if menu_show('whatsnew') %}<div class="item" data-ws="operations admin" data-url="/dashboard/whatsnew?embed=1"><i class="ti ti-sparkles"></i> Τι νέο</div>{% endif %}
+      <div class="item" data-ws="operations admin" data-url="/feedback?embed=1"><i class="ti ti-message-2-plus"></i> Στείλε feedback</div>
+
       {% if is_admin %}
       <div class="grp" data-ws="admin">Διαχείριση</div>
       <div class="item" data-ws="admin" data-url="/dashboard/users?embed=1"><i class="ti ti-users"></i> Χρήστες</div>
+      <div class="item" data-ws="admin" data-url="/dashboard/menu-roles?embed=1"><i class="ti ti-adjustments-cog"></i> Μενού ανά ρόλο</div>
+      <div class="item" data-ws="admin" data-url="/dashboard/feedback?embed=1"><i class="ti ti-messages"></i> Feedback χρηστών</div>
       <div class="item" data-ws="admin" data-url="/dashboard/activity?embed=1"><i class="ti ti-history"></i> Καταγραφή χρηστών</div>
       <div class="item" data-ws="admin" data-url="/dashboard/hotels?embed=1"><i class="ti ti-building"></i> Ξενοδοχεία & Πισίνες</div>
       <div class="item" data-ws="admin" data-url="/dashboard/areas?embed=1"><i class="ti ti-map-pin"></i> Διαχείριση τομέων</div>
@@ -306,7 +321,6 @@ html[data-theme="dark"] .nm-foot{border-top-color:#243140;}
       <div class="item" data-ws="admin" data-url="/dashboard/backup?embed=1"><i class="ti ti-database-export"></i> Αντίγραφα ασφαλείας</div>
       <div class="item" data-ws="admin" data-url="/dashboard/email?embed=1"><i class="ti ti-mail"></i> Email</div>
       <div class="item" data-ws="admin" data-url="/dashboard/theme?embed=1"><i class="ti ti-palette"></i> Εμφάνιση</div>
-      <div class="item" data-ws="admin" data-url="/dashboard/whatsnew?embed=1"><i class="ti ti-sparkles"></i> Τι νέο</div>
       {% if is_master %}<div class="item" data-ws="admin" data-url="/dashboard/ai?embed=1"><i class="ti ti-plug"></i> AI σύνδεση</div>{% endif %}
       {% endif %}
     </nav>

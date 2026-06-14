@@ -1,0 +1,20 @@
+{% import '_monitoring.html' as mp %}
+<!DOCTYPE html><html lang="el"><head>{{ mp.head('Feedback χρηστών', theme.primary) }}
+<style>table{width:100%;border-collapse:collapse;font-size:13px;}th,td{padding:8px;border-bottom:1px solid #eef2f6;text-align:left;vertical-align:top;}
+.pill{padding:2px 8px;border-radius:10px;font-size:11px;}.b{background:#64748b;color:#fff;border:none;padding:5px 10px;border-radius:8px;cursor:pointer;font-size:12px;}</style></head><body>
+{{ mp.topbar('messages', 'ΕΣΤΙΑ — Feedback χρηστών', counts.new ~ ' νέα · ' ~ counts.total ~ ' σύνολο') }}
+<div class="container"><div class="card"><div style="overflow-x:auto;">
+  <table><thead><tr><th>Ημ/νία</th><th>Χρήστης</th><th>Τύπος</th><th>Μήνυμα</th><th>Κατάσταση</th><th></th></tr></thead><tbody>
+  {% for f in items %}
+    <tr style="{{ 'background:#fffbeb;' if f.status=='new' }}">
+      <td>{{ f.created_at.strftime('%d/%m %H:%M') }}</td>
+      <td>{{ umap.get(f.user_id,'—') }}</td>
+      <td>{{ kinds.get(f.kind, f.kind) }}</td>
+      <td style="max-width:420px;">{{ f.text }}{% if f.page %}<br><small style="color:#94a3b8;">{{ f.page }}</small>{% endif %}</td>
+      <td><span class="pill" style="background:{{ {'new':'#fef3c7;color:#92400e','seen':'#e0f2fe;color:#0369a1','done':'#dcfce7;color:#166534'}[f.status] }}">{{ f.status }}</span></td>
+      <td><form method="POST" style="margin:0;display:flex;gap:4px;"><input type="hidden" name="id" value="{{ f.id }}">
+        <button class="b" name="status" value="seen">Είδα</button><button class="b" name="status" value="done" style="background:#16a34a;">Έγινε</button></form></td>
+    </tr>
+  {% else %}<tr><td colspan="6" style="padding:18px;color:#94a3b8;">Κανένα feedback ακόμη.</td></tr>{% endfor %}
+  </tbody></table>
+</div></div></div></body></html>

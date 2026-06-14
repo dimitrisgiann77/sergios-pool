@@ -1,0 +1,22 @@
+{% import '_monitoring.html' as mp %}
+<!DOCTYPE html><html lang="el"><head>{{ mp.head('Μενού ανά ρόλο', theme.primary) }}
+<style>table{width:100%;border-collapse:collapse;font-size:13px;}th,td{padding:8px;border-bottom:1px solid #eef2f6;text-align:center;}th:first-child,td:first-child{text-align:left;}
+.b{background:var(--accent,#185FA5);color:#fff;border:none;padding:9px 16px;border-radius:9px;cursor:pointer;}</style></head><body>
+{{ mp.topbar('adjustments-cog', 'ΕΣΤΙΑ — Μενού ανά ρόλο', 'Τι βλέπει κάθε ρόλος στο πλαϊνό μενού') }}
+<div class="container"><div class="card">
+  {% if request.args.get('ok') %}<div style="background:#dcfce7;color:#166534;padding:9px 12px;border-radius:9px;margin-bottom:10px;">✓ Αποθηκεύτηκε.</div>{% endif %}
+  <p style="font-size:13px;color:#64748b;">Οι <b>Admin/Master</b> βλέπουν πάντα τα πάντα. Εδώ ρυθμίζεις τι βλέπουν οι <b>Manager</b> (υποδοχή) και το <b>Staff</b>. Η πρόσβαση στα admin (Χρήστες/Εισαγωγές/Ρυθμίσεις) μένει πάντα μόνο σε admin.</p>
+  <form method="POST">
+    <table>
+      <thead><tr><th>Επιλογή μενού</th>{% for r in roles %}<th>{{ role_labels[r] }}</th>{% endfor %}</tr></thead>
+      <tbody>
+      {% for key, label in items %}
+        <tr><td>{{ label }}</td>
+          {% for r in roles %}<td><input type="checkbox" name="{{ r }}__{{ key }}" {{ 'checked' if key in vis[r] }} style="width:auto;transform:scale(1.3);"></td>{% endfor %}
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <div style="margin-top:12px;text-align:right;"><button class="b" type="submit"><i class="ti ti-device-floppy"></i> Αποθήκευση</button></div>
+  </form>
+</div></div></body></html>

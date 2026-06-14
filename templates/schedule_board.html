@@ -2,40 +2,33 @@
 <!DOCTYPE html><html lang="el"><head>
 {{ mp.head('Πρόγραμμα Εργασίας', theme.primary) }}
 <style>
-  .sched-toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;}
+  .sched-toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px;}
   .sched-toolbar select,.sched-toolbar input{padding:7px 9px;border:1px solid var(--bd,#dbe3ea);border-radius:9px;background:var(--card,#fff);color:inherit;}
   .wk-nav{display:flex;align-items:center;gap:6px;}
   .wk-nav a,.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 11px;border-radius:9px;border:1px solid var(--bd,#dbe3ea);background:var(--card,#fff);color:inherit;text-decoration:none;cursor:pointer;font-size:13px;}
   .btn.pri{background:var(--accent,#185FA5);color:#fff;border-color:transparent;}
-  .btn:disabled{opacity:.5;cursor:not-allowed;}
-  .wkcard{margin-bottom:16px;}
-  .wkhead{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px;}
-  .wkhead h3{margin:0;font-size:15px;}
+  .deptchips{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 14px;}
+  .dchip{padding:5px 12px;border-radius:20px;border:1px solid var(--bd,#dbe3ea);background:var(--card,#fff);cursor:pointer;font-size:12.5px;user-select:none;}
+  .dchip.on{background:var(--accent,#185FA5);color:#fff;border-color:transparent;}
+  .wkcard{margin-bottom:16px;} .wkhead{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px;} .wkhead h3{margin:0;font-size:15px;}
   .banner{padding:8px 11px;border-radius:9px;font-size:12.5px;display:inline-flex;gap:7px;align-items:center;}
   .banner.lock{background:#fef3c7;color:#92400e;} .banner.open{background:#dcfce7;color:#166534;} .banner.err{background:#fee2e2;color:#b91c1c;}
+  .deptsec{margin:10px 0;} .deptsec h4{margin:0 0 4px;font-size:13px;display:flex;align-items:center;gap:6px;}
   table.grid{width:100%;border-collapse:collapse;font-size:12.5px;}
   table.grid th,table.grid td{border:1px solid var(--bd,#e2e8f0);padding:4px 6px;text-align:center;}
   table.grid th.name,table.grid td.name{text-align:left;white-space:nowrap;position:sticky;left:0;background:var(--card,#fff);min-width:160px;}
-  table.grid th{background:var(--soft,#f1f5f9);font-weight:600;}
-  table.grid th.sun,table.grid td.sun{background:#fff4f4;}
+  table.grid th{background:var(--soft,#f1f5f9);font-weight:600;} table.grid th.sun,table.grid td.sun{background:#fff4f4;}
   .cell{min-width:78px;height:34px;cursor:pointer;border-radius:6px;font-size:11px;line-height:1.2;}
   .cell.empty{color:#cbd5e1;} .cell .hh{font-size:9px;opacity:.7;display:block;} .cell .x{font-size:8px;color:#e11d48;font-weight:700;}
   .tot{font-weight:700;} td.warn{color:#dc2626;}
   .editor{position:fixed;z-index:90;background:var(--card,#fff);border:1px solid var(--bd,#cbd5e1);border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.18);padding:10px;width:240px;display:none;}
-  .editor h5{margin:0 0 6px;font-size:12px;color:#64748b;}
-  .codes{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px;}
-  .codes button{border:none;border-radius:7px;padding:5px 8px;color:#fff;cursor:pointer;font-size:11px;}
-  .times{display:flex;gap:5px;align-items:center;margin-bottom:8px;}
-  .times input{width:70px;padding:5px;border:1px solid var(--bd,#cbd5e1);border-radius:7px;}
-  .ed-actions{display:flex;justify-content:space-between;}
-  .issues .it{font-size:12px;padding:4px 8px;border-radius:7px;background:#fef2f2;color:#b91c1c;margin-bottom:3px;}
-  .issues .it.warn{background:#fffbeb;color:#92400e;}
-  .legend{display:flex;gap:8px;flex-wrap:wrap;font-size:11px;margin:6px 0;}
-  .legend span{display:inline-flex;align-items:center;gap:4px;} .dot{width:11px;height:11px;border-radius:3px;display:inline-block;}
+  .editor h5{margin:0 0 6px;font-size:12px;color:#64748b;} .codes{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px;} .codes button{border:none;border-radius:7px;padding:5px 8px;color:#fff;cursor:pointer;font-size:11px;}
+  .times{display:flex;gap:5px;align-items:center;margin-bottom:8px;} .times input{width:70px;padding:5px;border:1px solid var(--bd,#cbd5e1);border-radius:7px;} .ed-actions{display:flex;justify-content:space-between;}
+  .issues .it{font-size:12px;padding:4px 8px;border-radius:7px;background:#fef2f2;color:#b91c1c;margin-bottom:3px;} .issues .it.warn{background:#fffbeb;color:#92400e;}
+  .legend{display:flex;gap:8px;flex-wrap:wrap;font-size:11px;margin:6px 0;} .legend span{display:inline-flex;align-items:center;gap:4px;} .dot{width:11px;height:11px;border-radius:3px;display:inline-block;}
 </style>
 </head><body>
-{{ mp.topbar('calendar-week', 'ΕΣΤΙΑ — Πρόγραμμα Εργασίας',
-   (cur_hotel.name if cur_hotel else '') ~ (' · ' ~ cur_dept.name if cur_dept else '')) }}
+{{ mp.topbar('calendar-week', 'ΕΣΤΙΑ — Πρόγραμμα Εργασίας', cur_hotel.name if cur_hotel else '') }}
 <div class="container">
 
   <form class="sched-toolbar" method="GET" action="/dashboard/schedule">
@@ -43,124 +36,120 @@
     <select name="hotel_id" onchange="this.form.submit()">
       {% for h in hotels %}<option value="{{ h.id }}" {{ 'selected' if h.id==hotel_id }}>{{ h.name }}</option>{% endfor %}
     </select>
-    <select name="department_id" onchange="this.form.submit()">
-      {% for d in depts %}<option value="{{ d.id }}" {{ 'selected' if d.id==dept_id }}>{{ d.name }}</option>{% endfor %}
-    </select>
     <span class="wk-nav">
-      <a href="/dashboard/schedule?hotel_id={{ hotel_id }}&department_id={{ dept_id }}&week={{ prev_week }}&weeks={{ weeks }}&embed=1" title="Προηγούμενη"><i class="ti ti-chevron-left"></i></a>
+      <a href="/dashboard/schedule?hotel_id={{ hotel_id }}&week={{ prev_week }}&weeks={{ weeks }}&embed=1"><i class="ti ti-chevron-left"></i></a>
       <input type="date" name="week" value="{{ week_start_iso }}" onchange="this.form.submit()">
-      <a href="/dashboard/schedule?hotel_id={{ hotel_id }}&department_id={{ dept_id }}&week={{ next_week }}&weeks={{ weeks }}&embed=1" title="Επόμενη"><i class="ti ti-chevron-right"></i></a>
+      <a href="/dashboard/schedule?hotel_id={{ hotel_id }}&week={{ next_week }}&weeks={{ weeks }}&embed=1"><i class="ti ti-chevron-right"></i></a>
     </span>
     <label style="font-size:13px;">Εβδομάδες:
-      <select name="weeks" onchange="this.form.submit()">
-        {% for n in [1,2,3,4,6,8,12] %}{% if n<=horizon %}<option value="{{ n }}" {{ 'selected' if n==weeks }}>{{ n }}</option>{% endif %}{% endfor %}
-      </select>
+      <select name="weeks" onchange="this.form.submit()">{% for n in [1,2,3,4,6,8,12] %}{% if n<=horizon %}<option value="{{ n }}" {{ 'selected' if n==weeks }}>{{ n }}</option>{% endif %}{% endfor %}</select>
     </label>
     <a class="btn" href="/dashboard/schedule/staff?embed=1"><i class="ti ti-users-plus"></i> Προσωπικό</a>
   </form>
 
-  {% set qs = request.args %}
-  {% if qs.get('ok')=='submitted' %}<div class="banner open" style="margin-bottom:10px;"><i class="ti ti-check"></i> Το πρόγραμμα υποβλήθηκε στο λογιστήριο.</div>{% endif %}
+  <div>
+    <span style="font-size:12px;color:#64748b;">Τμήματα:</span>
+    <div class="deptchips" id="deptchips">
+      <span class="dchip on" data-dept="all" onclick="toggleAll()">Όλα</span>
+      {% for d in dept_list %}<span class="dchip on" data-dept="{{ d.id }}" onclick="toggleDept('{{ d.id }}')" style="border-left:4px solid {{ d.color }};">{{ d.name }}</span>{% endfor %}
+    </div>
+  </div>
+
+  {% set qs=request.args %}
+  {% if qs.get('ok')=='submitted' %}<div class="banner open" style="margin-bottom:10px;"><i class="ti ti-check"></i> Υποβλήθηκε στο λογιστήριο.</div>{% endif %}
   {% if qs.get('ok')=='copied' %}<div class="banner open" style="margin-bottom:10px;"><i class="ti ti-copy"></i> Αντιγράφηκε η προηγούμενη εβδομάδα.</div>{% endif %}
   {% if qs.get('err')=='rules' %}<div class="banner err" style="margin-bottom:10px;"><i class="ti ti-alert-triangle"></i> Η υποβολή μπλοκαρίστηκε — δες τους κανόνες.</div>{% endif %}
-  {% if qs.get('err')=='locked' %}<div class="banner lock" style="margin-bottom:10px;"><i class="ti ti-lock"></i> Κλειδωμένη εβδομάδα.</div>{% endif %}
 
   {% for blk in blocks %}
   <div class="card wkcard">
     <div class="wkhead">
       <h3><i class="ti ti-calendar"></i> Εβδομάδα {{ blk.label }}</h3>
-      {% if blk.editable %}
-        <span class="banner open"><i class="ti ti-pencil"></i> Επεξεργάσιμο · προθεσμία {{ blk.deadline.strftime('%a %d/%m %H:%M') }}</span>
-      {% else %}
-        <span class="banner lock"><i class="ti ti-lock"></i> Κλειδωμένο (read-only)</span>
-      {% endif %}
+      {% if blk.editable %}<span class="banner open"><i class="ti ti-pencil"></i> Επεξεργάσιμο · προθεσμία {{ blk.deadline.strftime('%a %d/%m %H:%M') }}</span>
+      {% else %}<span class="banner lock"><i class="ti ti-lock"></i> Κλειδωμένο</span>{% endif %}
     </div>
-    <div style="overflow-x:auto;">
-    <table class="grid">
-      <thead><tr>
-        <th class="name">Εργαζόμενος</th>
-        {% for d in blk.days %}<th class="{{ 'sun' if d.weekday()==6 }}">{{ weekdays[d.weekday()][:3] }}<br><small>{{ d.strftime('%d/%m') }}</small></th>{% endfor %}
-        <th>Ώρες</th><th>Ρεπό</th><th>Εργάσιμες</th>
-      </tr></thead>
-      <tbody>
-      {% for r in blk.rows %}
-        <tr>
-          <td class="name">{{ r.user.full_name }}{% if r.user.login_enabled is sameas false %} <i class="ti ti-lock" title="χωρίς login" style="font-size:11px;opacity:.5"></i>{% endif %}</td>
-          {% for c in r.cells %}
-            {% set st = shift_lookup.get(c.code) %}
-            <td class="{{ 'sun' if loop.index0==6 }}">
-              <div class="cell {{ 'empty' if not c.code }}" data-uid="{{ r.user.id }}" data-date="{{ c.date }}" data-code="{{ c.code }}"
-                   data-segs='{{ c.segs|tojson }}' data-edit="{{ '1' if blk.editable else '0' }}"
-                   style="{{ ('background:'+st.color+'22;border:1px solid '+st.color+'66;') if st else '' }}" onclick="openEditor(this)">
-                {% if c.elsewhere %}<span class="x">⇄</span>{% endif %}{{ c.label or '+' }}{% if c.code=='ΕΡΓ' and c.hours %}<span class="hh">{{ c.hours }}h</span>{% endif %}
-              </div>
-            </td>
-          {% endfor %}
-          <td class="tot">{{ r.wk_hours }}</td>
-          <td class="tot {{ 'warn' if r.repo<1 }}">{{ r.repo }}</td>
-          <td class="tot">{{ r.work_days }}</td>
-        </tr>
-      {% else %}
-        <tr><td colspan="11" style="padding:18px;color:#94a3b8;">Κανένας εργαζόμενος εδώ. Πρόσθεσε από «Προσωπικό» ή κάνε εισαγωγή.</td></tr>
-      {% endfor %}
-      </tbody>
-    </table>
+
+    {% for dg in blk.deptgrids %}
+    <div class="deptsec" data-dept="{{ dg.dept.id }}">
+      <h4><span class="dot" style="background:{{ dg.dept.color }}"></span>{{ dg.dept.name }} <span style="color:#94a3b8;font-weight:400;">({{ dg.rows|length }})</span></h4>
+      <div style="overflow-x:auto;">
+      <table class="grid">
+        <thead><tr><th class="name">Εργαζόμενος</th>
+          {% for d in blk.days %}<th class="{{ 'sun' if d.weekday()==6 }}">{{ weekdays[d.weekday()][:3] }}<br><small>{{ d.strftime('%d/%m') }}</small></th>{% endfor %}
+          <th>Ώρες</th><th>Ρεπό</th><th>Εργάσιμες</th></tr></thead>
+        <tbody>
+        {% for r in dg.rows %}
+          <tr>
+            <td class="name">{{ r.user.full_name }}{% if r.user.login_enabled is sameas false %} <i class="ti ti-lock" title="χωρίς login" style="font-size:11px;opacity:.5"></i>{% endif %}</td>
+            {% for c in r.cells %}{% set st=shift_lookup.get(c.code) %}
+              <td class="{{ 'sun' if loop.index0==6 }}"><div class="cell {{ 'empty' if not c.code }}" data-uid="{{ r.user.id }}" data-date="{{ c.date }}" data-code="{{ c.code }}" data-segs='{{ c.segs|tojson }}' data-edit="{{ '1' if blk.editable else '0' }}" style="{{ ('background:'+st.color+'22;border:1px solid '+st.color+'66;') if st else '' }}" onclick="openEditor(this)">{% if c.elsewhere %}<span class="x">⇄</span>{% endif %}{{ c.label or '+' }}{% if c.code=='ΕΡΓ' and c.hours %}<span class="hh">{{ c.hours }}h</span>{% endif %}</div></td>
+            {% endfor %}
+            <td class="tot">{{ r.wk_hours }}</td><td class="tot {{ 'warn' if r.repo<1 }}">{{ r.repo }}</td><td class="tot">{{ r.work_days }}</td>
+          </tr>
+        {% else %}<tr><td colspan="11" style="padding:12px;color:#94a3b8;">— καμία εγγραφή —</td></tr>{% endfor %}
+        </tbody>
+      </table>
+      </div>
     </div>
+    {% endfor %}
 
     {% if blk.editable %}
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
-      <form method="POST" action="/dashboard/schedule/copyprev">
-        <input type="hidden" name="hotel_id" value="{{ hotel_id }}"><input type="hidden" name="department_id" value="{{ dept_id }}"><input type="hidden" name="week" value="{{ blk.iso }}">
-        <button class="btn" type="submit"><i class="ti ti-copy"></i> Αντιγραφή προηγ. εβδομάδας</button>
-      </form>
-      <form method="POST" action="/dashboard/schedule/submit" onsubmit="return confirm('Υποβολή ΟΛΟΥ του ξενοδοχείου για την εβδομάδα {{ blk.label }};');">
-        <input type="hidden" name="hotel_id" value="{{ hotel_id }}"><input type="hidden" name="week" value="{{ blk.iso }}">
-        <button class="btn pri" type="submit"><i class="ti ti-send"></i> Αποστολή στο λογιστήριο (όλο το ξενοδοχείο)</button>
-      </form>
+      <form method="POST" action="/dashboard/schedule/copyprev"><input type="hidden" name="hotel_id" value="{{ hotel_id }}"><input type="hidden" name="week" value="{{ blk.iso }}"><button class="btn" type="submit"><i class="ti ti-copy"></i> Αντιγραφή προηγ. εβδομάδας (όλα τα τμήματα)</button></form>
+      <form method="POST" action="/dashboard/schedule/submit" onsubmit="return confirm('Υποβολή ΟΛΟΥ του ξενοδοχείου για την εβδομάδα {{ blk.label }};');"><input type="hidden" name="hotel_id" value="{{ hotel_id }}"><input type="hidden" name="week" value="{{ blk.iso }}"><button class="btn pri" type="submit"><i class="ti ti-send"></i> Αποστολή στο λογιστήριο</button></form>
     </div>
     {% endif %}
 
-    {% if blk.issues %}
-    <div class="issues" style="margin-top:8px;">
-      {% for i in blk.issues %}<div class="it {{ 'warn' if i.severity=='warn' }}">{{ '⛔' if i.severity=='block' else '⚠' }} {{ i.msg }}</div>{% endfor %}
-    </div>
+    {% if blk.issues %}<div class="issues" style="margin-top:8px;">{% for i in blk.issues %}<div class="it {{ 'warn' if i.severity=='warn' }}">{{ '⛔' if i.severity=='block' else '⚠' }} {{ i.msg }}</div>{% endfor %}</div>
     {% else %}<div class="issues" style="margin-top:8px;"><div class="it" style="background:#dcfce7;color:#166534;">✓ Όλοι οι κανόνες περνούν.</div></div>{% endif %}
     {% if blk.sub %}<p style="font-size:12px;color:#64748b;margin-top:6px;">Τελευταία υποβολή: v{{ blk.sub.version }} — {{ blk.sub.submitted_at.strftime('%d/%m/%Y %H:%M') }}</p>{% endif %}
   </div>
   {% endfor %}
 
-  <div class="legend">
-    {% for st in shift_types %}<span><span class="dot" style="background:{{ st.color }}"></span>{{ st.code }} — {{ st.label }}</span>{% endfor %}
-    <span><span class="x">⇄</span> άλλο ξενοδοχείο</span>
-  </div>
+  <div class="legend">{% for st in shift_types %}<span><span class="dot" style="background:{{ st.color }}"></span>{{ st.code }} — {{ st.label }}</span>{% endfor %}<span><span class="x">⇄</span> άλλο ξενοδοχείο</span></div>
 </div>
 
 <div class="editor" id="editor">
-  <h5 id="ed-title">Βάρδια</h5>
-  <div class="codes" id="ed-codes"></div>
+  <h5 id="ed-title">Βάρδια</h5><div class="codes" id="ed-codes"></div>
   <div class="times" id="ed-times" style="display:none;"><input type="time" id="ed-start" value="07:00"> – <input type="time" id="ed-end" value="15:30"></div>
   <div class="ed-actions"><button class="btn" onclick="clearCell()"><i class="ti ti-trash"></i> Καθάρισε</button><button class="btn pri" onclick="saveCell()">Αποθήκευση</button></div>
 </div>
 
 <script>
-var SHIFTS = {{ shift_types_json|safe }};
-var cur=null, pickedCode='ΕΡΓ';
-function openEditor(el){
-  if(el.getAttribute('data-edit')!=='1'){ return; }
-  cur=el;
-  var codes=document.getElementById('ed-codes'); codes.innerHTML='';
-  SHIFTS.forEach(function(s){ var b=document.createElement('button'); b.textContent=s.code; b.style.background=s.color; b.onclick=function(){pick(s.code);}; codes.appendChild(b); });
-  pick(el.getAttribute('data-code')||'ΕΡΓ', true);
-  var segs=[]; try{segs=JSON.parse(el.getAttribute('data-segs')||'[]');}catch(e){}
-  if(segs.length){ document.getElementById('ed-start').value=segs[0].start; document.getElementById('ed-end').value=segs[0].end; }
-  var rc=el.getBoundingClientRect(), ed=document.getElementById('editor');
-  ed.style.display='block'; ed.style.left=Math.min(rc.left, window.innerWidth-260)+'px'; ed.style.top=(rc.bottom+6)+'px';
+var SHIFTS={{ shift_types_json|safe }}, cur=null, pickedCode='ΕΡΓ';
+var HKEY='estia_sched_depts_'+({{ hotel_id or 0 }});
+// ── Δυναμικό φίλτρο τμημάτων (χωρίς refresh) ──
+function applyDeptFilter(){
+  var sel=JSON.parse(localStorage.getItem(HKEY)||'null'); // null = όλα
+  document.querySelectorAll('.deptsec[data-dept]').forEach(function(s){
+    var id=s.getAttribute('data-dept'); s.style.display=(!sel || sel.indexOf(id)>=0)?'':'none';
+  });
+  document.querySelectorAll('.dchip[data-dept]').forEach(function(c){
+    var id=c.getAttribute('data-dept');
+    if(id==='all'){ c.classList.toggle('on', !sel); }
+    else { c.classList.toggle('on', !sel || sel.indexOf(id)>=0); }
+  });
 }
-function pick(code, silent){ pickedCode=code; document.getElementById('ed-title').textContent='Κωδικός: '+code; document.getElementById('ed-times').style.display=(code==='ΕΡΓ')?'flex':'none'; if(!silent && code!=='ΕΡΓ'){ saveCell(); } }
-function payload(){ var segs=[]; if(pickedCode==='ΕΡΓ'){ segs=[{start:document.getElementById('ed-start').value, end:document.getElementById('ed-end').value}]; } return {user_id:cur.getAttribute('data-uid'), date:cur.getAttribute('data-date'), code:pickedCode, segments:segs}; }
-function post(body){ return fetch('/dashboard/schedule/cell',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(function(r){ if(r.status===423){ alert('Κλειδωμένη εβδομάδα.'); return null;} return r.json(); }); }
-function saveCell(){ if(cur) post(payload()).then(function(j){ if(j) location.reload(); }); }
-function clearCell(){ if(cur) post({user_id:cur.getAttribute('data-uid'),date:cur.getAttribute('data-date'),code:''}).then(function(){ location.reload(); }); }
-document.addEventListener('click',function(e){ var ed=document.getElementById('editor'); if(ed.style.display==='block' && !ed.contains(e.target) && !e.target.closest('.cell')){ ed.style.display='none'; } });
+function curSel(){ var s=JSON.parse(localStorage.getItem(HKEY)||'null'); if(s) return s;
+  return Array.prototype.map.call(document.querySelectorAll('.dchip[data-dept]:not([data-dept="all"])'),function(c){return c.getAttribute('data-dept');}); }
+function toggleDept(id){ var s=curSel(); var i=s.indexOf(id); if(i>=0)s.splice(i,1); else s.push(id);
+  var all=document.querySelectorAll('.dchip[data-dept]:not([data-dept="all"])').length;
+  localStorage.setItem(HKEY, (s.length>=all)?'null':JSON.stringify(s)); applyDeptFilter(); }
+function toggleAll(){ localStorage.removeItem(HKEY); applyDeptFilter(); }
+applyDeptFilter();
+// ── Cell editor ──
+function openEditor(el){ if(el.getAttribute('data-edit')!=='1')return; cur=el;
+  var codes=document.getElementById('ed-codes'); codes.innerHTML='';
+  SHIFTS.forEach(function(s){var b=document.createElement('button');b.textContent=s.code;b.style.background=s.color;b.onclick=function(){pick(s.code);};codes.appendChild(b);});
+  pick(el.getAttribute('data-code')||'ΕΡΓ',true);
+  var segs=[];try{segs=JSON.parse(el.getAttribute('data-segs')||'[]');}catch(e){}
+  if(segs.length){document.getElementById('ed-start').value=segs[0].start;document.getElementById('ed-end').value=segs[0].end;}
+  var rc=el.getBoundingClientRect(),ed=document.getElementById('editor');
+  ed.style.display='block';ed.style.left=Math.min(rc.left,window.innerWidth-260)+'px';ed.style.top=(rc.bottom+6)+'px'; }
+function pick(code,silent){pickedCode=code;document.getElementById('ed-title').textContent='Κωδικός: '+code;document.getElementById('ed-times').style.display=(code==='ΕΡΓ')?'flex':'none';if(!silent&&code!=='ΕΡΓ')saveCell();}
+function payload(){var segs=[];if(pickedCode==='ΕΡΓ')segs=[{start:document.getElementById('ed-start').value,end:document.getElementById('ed-end').value}];return {user_id:cur.getAttribute('data-uid'),date:cur.getAttribute('data-date'),code:pickedCode,segments:segs};}
+function post(b){return fetch('/dashboard/schedule/cell',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}).then(function(r){if(r.status===423){alert('Κλειδωμένη εβδομάδα.');return null;}return r.json();});}
+function saveCell(){if(cur)post(payload()).then(function(j){if(j)location.reload();});}
+function clearCell(){if(cur)post({user_id:cur.getAttribute('data-uid'),date:cur.getAttribute('data-date'),code:''}).then(function(){location.reload();});}
+document.addEventListener('click',function(e){var ed=document.getElementById('editor');if(ed.style.display==='block'&&!ed.contains(e.target)&&!e.target.closest('.cell'))ed.style.display='none';});
 </script>
 </body></html>
