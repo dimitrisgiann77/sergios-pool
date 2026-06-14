@@ -16,10 +16,30 @@
 
   {{ mp.kpis([
     {'n': companies|length, 'label':'Εταιρείες', 'color':'#185FA5', 'href':'/dashboard/payroll/companies?embed=1'},
-    {'n': n_emp, 'label':'Εργαζόμενοι', 'color':'#0e9f6e'},
-    {'n': n_agree, 'label':'Με συμφωνία', 'color':'#d97706'},
-    {'n': n_pii, 'label':'Με ΑΦΜ/PII', 'color':'#7e22ce'},
+    {'n': n_emp, 'label':'Εργαζόμενοι (όλοι)', 'color':'#0e9f6e', 'href':'/dashboard/payroll?embed=1', 'active': not flt},
+    {'n': n_agree, 'label':'Με συμφωνία', 'color':'#d97706', 'href':'/dashboard/payroll?filter=agree&embed=1', 'active': flt=='agree'},
+    {'n': n_pii, 'label':'Με ΑΦΜ/PII', 'color':'#7e22ce', 'href':'/dashboard/payroll?filter=pii&embed=1', 'active': flt=='pii'},
   ]) }}
+
+  <form method="GET" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0;">
+    <input type="hidden" name="embed" value="1">
+    <b style="font-size:13px;">Φίλτρα:</b>
+    <select name="company_id" onchange="this.form.submit()" style="padding:6px 8px;border:1px solid #dbe3ea;border-radius:8px;">
+      <option value="">— εταιρεία —</option>{% for c in companies %}<option value="{{ c.id }}" {{ 'selected' if company_id==c.id }}>{{ c.legal_name }}</option>{% endfor %}
+    </select>
+    <select name="hotel_id" onchange="this.form.submit()" style="padding:6px 8px;border:1px solid #dbe3ea;border-radius:8px;">
+      <option value="">— ξενοδοχείο —</option>{% for h in hotels %}<option value="{{ h.id }}" {{ 'selected' if hotel_id==h.id }}>{{ h.name }}</option>{% endfor %}
+    </select>
+    <select name="filter" onchange="this.form.submit()" style="padding:6px 8px;border:1px solid #dbe3ea;border-radius:8px;">
+      <option value="">— όλοι —</option>
+      <option value="agree" {{ 'selected' if flt=='agree' }}>με συμφωνία</option>
+      <option value="noagree" {{ 'selected' if flt=='noagree' }}>χωρίς συμφωνία</option>
+      <option value="pii" {{ 'selected' if flt=='pii' }}>με ΑΦΜ</option>
+      <option value="nopii" {{ 'selected' if flt=='nopii' }}>χωρίς ΑΦΜ</option>
+    </select>
+    <a href="/dashboard/payroll?embed=1" style="font-size:13px;color:#64748b;">καθαρισμός</a>
+    <span style="font-size:13px;color:#94a3b8;margin-left:auto;">{{ total_shown }} εγγραφές</span>
+  </form>
 
   <div class="card">
     <h3>Μητρώο εργαζομένων ανά εταιρεία</h3>
@@ -37,7 +57,7 @@
           <td>{{ r.profile.position if r.profile and r.profile.position else (r.pii.ergani_specialty if r.pii else '') }}</td>
           <td class="muted">{{ r.hotel_name }}</td>
           <td>{% if r.profile and r.profile.agreement_amount %}<b>{{ '%.0f'|format(r.profile.agreement_amount) }}€</b> <span class="muted">{{ r.profile.agreement_type }}</span>{% else %}<span class="pill no">—</span>{% endif %}</td>
-          <td>{% if r.pii and r.pii.afm %}<span class="pill ok">✓</span>{% else %}<span class="pill no">λείπει</span>{% endif %}</td>
+          <td>{% if r.pii and r.pii.afm %}<span class="pill ok">✓{% if r.pii.locked %} 🔒{% endif %}</span>{% else %}<span class="pill no">λείπει</span>{% endif %}</td>
           <td><a class="b" href="/dashboard/payroll/employee/{{ r.user.id }}?embed=1">Καρτέλα</a></td>
         </tr>
       {% else %}

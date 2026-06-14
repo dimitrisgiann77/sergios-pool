@@ -27,10 +27,10 @@ html[data-theme="dark"] .dropzone{background:#16202c;border-color:#33475b;color:
       <div id="dz" class="dropzone"><i class="ti ti-cloud-upload"></i>Σύρε εδώ το αρχείο Epsilon (.xlsx) ή κάνε κλικ<input type="file" name="file" accept=".xlsx,.xls" id="dzin" style="display:none;"><div id="dzlist" class="dzlist"></div></div>
       <button class="b" type="submit"><i class="ti ti-upload"></i> Εισαγωγή</button>
     </form>
-    <p class="muted">Διαβάζει τις 44 στήλες Epsilon → νόμιμα καθαρά/εισφορές/ΦΜΥ/κόστος εργοδότη ανά εργαζόμενο/μήνα, και <b>συμπληρώνει αυτόματα ΑΦΜ/ΑΜΚΑ/ειδικότητα/τράπεζα (PII)</b>. Ταίριασμα με ΑΦΜ → όνομα. Idempotent (ίδιο αρχείο = χωρίς διπλά). Φορτωμένες γραμμές: <b>{{ n_legal }}</b>.</p>
+    <p class="muted"><b>Δημιουργεί & κλειδώνει το μητρώο εργαζομένων</b> από το Epsilon (η επίσημη πηγή): χρήστες (login-off) + ΑΦΜ/ΑΜΚΑ/ειδικότητα/τράπεζα/ξενοδοχείο + νόμιμα καθαρά. Τα κλειδωμένα <b>δεν τα γράφουν/σβήνουν</b> άλλες πηγές. Ταίριασμα με ΑΦΜ → όνομα. Idempotent (ίδιο αρχείο = χωρίς διπλά). Φορτωμένες γραμμές: <b>{{ n_legal }}</b>.</p>
     {% if result %}
       {% if result.error %}<div class="err">Σφάλμα: {{ result.error }}</div>
-      {% else %}<div class="ok">✓ {{ result.company or 'Άγνωστη εταιρεία' }} · περίοδοι {{ result.periods }} · γραμμές {{ result.rows }} (νέες {{ result.added }}, ενημερώθηκαν {{ result.updated }}, εκ των οποίων δώρα/άδεια {{ result.extras }}) · ταιριάστηκαν {{ result.matched }} εργαζόμενοι · PII συμπληρώθηκε σε {{ result.pii_filled }}.</div>{% endif %}
+      {% else %}<div class="ok">✓ {{ result.company or 'Άγνωστη εταιρεία' }} · περίοδοι {{ result.periods }} · γραμμές {{ result.rows }} · <b>νέοι εργαζόμενοι {{ result.created }}</b> · δώρα/άδεια {{ result.extras }} · ΑΦΜ/PII σε {{ result.pii_filled }} · κλειδωμένο μητρώο ✓.</div>{% endif %}
     {% endif %}
   </div>
 </div><script>(function(){var dz=document.getElementById('dz'),inp=document.getElementById('dzin'),lst=document.getElementById('dzlist');if(!dz)return;

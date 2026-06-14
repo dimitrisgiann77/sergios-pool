@@ -667,6 +667,19 @@ def schedule_board():
     pol = get_policy()
     horizon = max(1, int(pol.get('planning_horizon_weeks', 8)))
     weeks = max(1, min(request.args.get('weeks', type=int) or 1, horizon))
+    # v12.55 — πλοήγηση/προβολή μήνα: αν δοθεί month, δείξε ΟΛΟΝ τον μήνα (5-6 εβδομάδες)
+    import calendar as _cal
+    mon_arg = request.args.get('month', type=int)
+    yr_arg = request.args.get('year', type=int) or week_start.year
+    sel_month = mon_arg or week_start.month
+    sel_year = yr_arg
+    if mon_arg:
+        first = date(yr_arg, mon_arg, 1)
+        week_start = monday_of(first)
+        last = date(yr_arg, mon_arg, _cal.monthrange(yr_arg, mon_arg)[1])
+        weeks = ((monday_of(last) - week_start).days // 7) + 1
+    prev_m = (date(sel_year, sel_month, 1) - timedelta(days=1))
+    nxt = date(sel_year, sel_month, 28) + timedelta(days=10)
     blocks = [_build_block(hotel_id, dept_list, week_start + timedelta(days=7 * i), user) for i in range(weeks)]
     shift_types = ShiftType.query.filter_by(active=True).order_by(ShiftType.sort).all()
     shift_lookup = {st.code: st for st in shift_types}
@@ -679,7 +692,9 @@ def schedule_board():
         week_start=week_start, week_start_iso=week_start.isoformat(),
         prev_week=(week_start - timedelta(days=7)).isoformat(),
         next_week=(week_start + timedelta(days=7)).isoformat(),
-        month_el=MONTHS_EL, is_admin=is_admin())
+        month_el=MONTHS_EL, is_admin=is_admin(),
+        sel_month=sel_month, sel_year=sel_year,
+        prev_month=prev_m.month, prev_year=prev_m.year, next_month=nxt.month, next_year=nxt.year)
 
 
 # ── API: autosave κελιού ──────────────────────────────────────────────────────
@@ -941,7 +956,12 @@ def schedule_import():
                 results.append({'name': f.filename, 'kind': 'error', 'stats': {'error': str(e)}})
         seed_schedule()
         log_activity('schedule_import_multi', f'{len(results)} αρχεία')
-    purge_count = imported_staff_query().count()
+    try:
+        from payroll import EmployeePII as _PII
+        _locked = {p.user_id for p in _PII.query.filter_by(locked=True).all()}
+    except Exception:
+        _locked = set()
+    purge_count = sum(1 for u in imported_staff_query().all() if u.id not in _locked)
     return render_template('schedule_import.html', results=results, year=date.today().year, purge_count=purge_count)
 
 
@@ -1180,6 +1200,12 @@ def schedule_staff_purge():
     if not _auth() or not is_admin():
         return redirect(url_for('login'))
     staff = imported_staff_query().all()
+    try:
+        from payroll import EmployeePII as _PII
+        locked_ids = {p.user_id for p in _PII.query.filter_by(locked=True).all()}
+    except Exception:
+        locked_ids = set()
+    staff = [u for u in staff if u.id not in locked_ids]   # v12.56: μην σβήνεις κλειδωμένους (Epsilon)
     ids = [u.id for u in staff]
     n = len(ids)
     if ids:

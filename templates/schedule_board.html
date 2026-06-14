@@ -44,6 +44,14 @@
     <label style="font-size:13px;">Εβδομάδες:
       <select name="weeks" onchange="this.form.submit()">{% for n in [1,2,3,4,6,8,12] %}{% if n<=horizon %}<option value="{{ n }}" {{ 'selected' if n==weeks }}>{{ n }}</option>{% endif %}{% endfor %}</select>
     </label>
+    <span class="wk-nav" style="margin-left:4px;">
+      <a title="Προηγ. μήνας" href="/dashboard/schedule?hotel_id={{ hotel_id }}&month={{ prev_month }}&year={{ prev_year }}&embed=1"><i class="ti ti-chevron-left"></i></a>
+      <select name="month" onchange="this.form.submit()" title="Δες όλον τον μήνα">
+        {% for m in range(1,13) %}<option value="{{ m }}" {{ 'selected' if m==sel_month }}>{{ month_el[m] }}</option>{% endfor %}
+      </select>
+      <input type="number" name="year" value="{{ sel_year }}" style="width:72px;" onchange="this.form.submit()">
+      <a title="Επόμ. μήνας" href="/dashboard/schedule?hotel_id={{ hotel_id }}&month={{ next_month }}&year={{ next_year }}&embed=1"><i class="ti ti-chevron-right"></i></a>
+    </span>
     <a class="btn" href="/dashboard/schedule/staff?embed=1"><i class="ti ti-users-plus"></i> Προσωπικό</a>
   </form>
 

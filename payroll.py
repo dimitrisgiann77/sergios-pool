@@ -104,6 +104,7 @@ class EmployeePII(db.Model):
     bank_iban        = db.Column(db.String(34))
     hired_at         = db.Column(db.Date)
     left_at          = db.Column(db.Date)
+    locked           = db.Column(db.Boolean, default=False)   # v12.56: κλειδωμένο μητρώο (πηγή=Epsilon)
     updated_at       = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     updated_by       = db.Column(db.Integer, db.ForeignKey('user.id'))
 
@@ -146,6 +147,7 @@ def ensure_payroll_columns():
             _add_col('payroll_line', 'paid', 'paid FLOAT')
             _add_col('payroll_run', 'approved_by', 'approved_by INTEGER')
             _add_col('payroll_run', 'approved_at', 'approved_at DATETIME')
+            _add_col('employee_pii', 'locked', 'locked BOOLEAN')
         except Exception as e:
             print('ensure_payroll_columns skipped:', e)
 
@@ -208,7 +210,8 @@ def _employees():
         comp = _company_for_hotel(hid)
         hotel = Hotel.query.get(hid) if hid else None
         out.append({'user': u, 'profile': prof, 'pii': pii, 'company': comp,
-                    'hotel_name': (hotel.name if hotel else '')})
+                    'hotel_name': (hotel.name if hotel else ''), 'hotel_id': hid,
+                    'dept_id': getattr(u, 'department_id', None)})
     out.sort(key=lambda r: (r['company'].legal_name if r['company'] else 'ω', r['user'].full_name or ''))
     return out
 
@@ -218,15 +221,29 @@ def _employees():
 def payroll_home():
     if not _padmin():
         return redirect(url_for('login'))
-    rows = _employees()
+    allrows = _employees()
     companies = Company.query.filter_by(active=True).order_by(Company.legal_name).all()
-    n_emp = len(rows)
-    n_agree = sum(1 for r in rows if r['profile'] and r['profile'].agreement_amount)
-    n_pii = sum(1 for r in rows if r['pii'] and r['pii'].afm)
+    # KPIs στο ΠΛΗΡΕΣ σύνολο
+    n_emp = len(allrows)
+    n_agree = sum(1 for r in allrows if r['profile'] and r['profile'].agreement_amount)
+    n_pii = sum(1 for r in allrows if r['pii'] and r['pii'].afm)
+    # φίλτρα
+    company_id = request.args.get('company_id', type=int)
+    hotel_id = request.args.get('hotel_id', type=int)
+    flt = request.args.get('filter')
+    rows = allrows
+    if company_id: rows = [r for r in rows if r['company'] and r['company'].id == company_id]
+    if hotel_id: rows = [r for r in rows if r.get('hotel_id') == hotel_id]
+    if flt == 'agree':   rows = [r for r in rows if r['profile'] and r['profile'].agreement_amount]
+    elif flt == 'noagree': rows = [r for r in rows if not (r['profile'] and r['profile'].agreement_amount)]
+    elif flt == 'pii':   rows = [r for r in rows if r['pii'] and r['pii'].afm]
+    elif flt == 'nopii': rows = [r for r in rows if not (r['pii'] and r['pii'].afm)]
+    hotels = Hotel.query.order_by(Hotel.name).all()
     rates = PayrollRates.query.filter_by(year=2026).first()
     log_activity('payroll_view', 'μητρώο')
     return render_template('payroll_home.html',
-        rows=rows, companies=companies, n_emp=n_emp, n_agree=n_agree, n_pii=n_pii,
+        rows=rows, companies=companies, hotels=hotels, n_emp=n_emp, n_agree=n_agree, n_pii=n_pii,
+        company_id=company_id, hotel_id=hotel_id, flt=flt, total_shown=len(rows),
         rates=rates, is_admin=is_admin())
 
 
@@ -467,6 +484,7 @@ def parse_epsilon(wb):
     c_epon=col('Επώνυμο'); c_onoma=col('Όνομα'); c_afm=col('ΑΦΜ')
     c_amka=col('ΑΜΚΑ'); c_ika=col('Α.Μ. ΙΚΑ','ΑΜ ΙΚΑ'); c_pat=col('Όνομα Πατρός')
     c_spec=col('Ειδικότητα'); c_kind=col('Είδος Εργάζ','Είδος Εργαζ'); c_contract=col('Διάρκεια Σύμβασης')
+    c_sub=col('Περιγραφή Υποκαταστήματος'); c_dept=col('Περιγραφή Τμήματος')
     c_bank=col('Τράπεζα'); c_period=col('Περίοδος'); c_year=col('Έτος')
     c_gross=col('Συν.Αποδ.','Συν.Αποδ'); c_emain=col('Εισφ. Εργάζ. Κύριου Ταμείου')
     c_eaux=col('Εισφ. Εργάζ. Επικ. Ταμείου'); c_fmy=col('Φ.Μ.Υ','ΦΜΥ')
@@ -496,6 +514,8 @@ def parse_epsilon(wb):
             'specialty': (ws.cell(r,c_spec).value if c_spec else None),
             'kind': (ws.cell(r,c_kind).value if c_kind else None),
             'contract': (ws.cell(r,c_contract).value if c_contract else None),
+            'subunit_desc': (ws.cell(r,c_sub).value if c_sub else None),
+            'dept_desc': (ws.cell(r,c_dept).value if c_dept else None),
             'bank': (ws.cell(r,c_bank).value if c_bank else None),
             'year': yr, 'month': month, 'period_raw': period_raw,
             'gross': num(c_gross), 'efka_employee': round(emain+eaux,2),
@@ -525,6 +545,61 @@ def _period_kind(period_raw):
     if n in _EPSILON_MONTH: return 'monthly'
     return _KIND_MAP.get(n, period_raw or 'extra')
 
+_HOTEL_KW = {
+    'AST': ['asterias', 'αστεριας'], 'CNT': ['central', 'κεντρικο', 'χερσονησ', 'hersoniss'],
+    'IRO': ['iro', 'ηρω'], 'SRG': ['sergios', 'σεργιος', 'σεργιου'],
+    'PSV': ['piskopiano', 'πισκοπιανο'], 'PLM': ['palm', 'παλμ'], 'CND': ['condian', 'κονντιαν'],
+}
+def _hotel_from_epsilon(row, comp=None):
+    """Ξενοδοχείο από ΥΠΟΚ/τμήμα Epsilon (λατ.+ελλ.)· fallback: μοναδικό ξεν. της εταιρείας."""
+    blob = _norm(str(row.get('subunit_desc') or '') + ' ' + str(row.get('dept_desc') or ''))
+    for code, kws in _HOTEL_KW.items():
+        if any(_norm(k) in blob for k in kws):
+            for h in Hotel.query.all():
+                if hotel_code(h) == code:
+                    return h
+    # fallback: αν η εταιρεία έχει ΑΚΡΙΒΩΣ ένα ξενοδοχείο
+    if comp:
+        hs = Hotel.query.filter_by(company_id=comp.id).all()
+        if len(hs) == 1:
+            return hs[0]
+    return None
+
+def _create_locked_employee(row):
+    """Δημιουργεί χρήστη-εργαζόμενο (login-off) από Epsilon (master)."""
+    from werkzeug.security import generate_password_hash
+    full = (str(row['epon']).strip() + ' ' + (str(row['onoma']).strip() if row['onoma'] else '')).strip()
+    base = re.sub(r'[^a-z0-9.]', '', _acc(full).lower().replace(' ', '.')) or ('emp' + os.urandom(3).hex())
+    uname = base[:40]
+    if User.query.filter_by(username=uname).first():
+        uname = (base[:32] + '.' + os.urandom(2).hex())[:46]
+    u = User(username=uname, password=generate_password_hash(os.urandom(8).hex()),
+             full_name=full[:100], role='staff', approved=True, is_active=True)
+    for attr, val in [('login_enabled', False), ('employment_active', True)]:
+        if hasattr(u, attr):
+            setattr(u, attr, val)
+    db.session.add(u); db.session.flush()
+    return u
+
+def _apply_epsilon_identity(u, row, comp=None):
+    """Ταυτότητα από Epsilon (αλήθεια): ξενοδοχείο + PII + κλείδωμα."""
+    hotel = _hotel_from_epsilon(row, comp)
+    if hotel:
+        u.home_hotel_id = hotel.id
+    pii = EmployeePII.query.filter_by(user_id=u.id).first()
+    if not pii:
+        pii = EmployeePII(user_id=u.id); db.session.add(pii)
+    filled = False
+    for fld, val in [('afm',row['afm']),('amka',row['amka']),('ika_am',row['ika']),
+                     ('father_name',row['father']),('ergani_specialty',row['specialty']),
+                     ('employment_kind',row['kind']),('contract_type',row['contract']),
+                     ('bank_name',row['bank'])]:
+        if val and not getattr(pii, fld, None):
+            setattr(pii, fld, str(val)[:120]); filled = True
+    pii.locked = True
+    db.session.flush()
+    return filled
+
 def import_epsilon_bytes(raw, filename='', company_id=None):
     """Εισάγει Epsilon workbook -> LegalNetImport (κανονικός + δώρα/άδεια). Idempotent."""
     if openpyxl is None:
@@ -542,7 +617,7 @@ def import_epsilon_bytes(raw, filename='', company_id=None):
     from collections import Counter
     mc = Counter((r['year'], r['month']) for r in rows if r['year'] and r['month'])
     dom = mc.most_common(1)[0][0] if mc else (None, None)
-    added = updated = matched = pii_filled = extras = 0
+    added = updated = matched = pii_filled = extras = created = 0
     period = set()
     for row in rows:
         kind = _period_kind(row['period_raw'])
@@ -554,7 +629,12 @@ def import_epsilon_bytes(raw, filename='', company_id=None):
         if not yr or not mo: continue
         period.add((yr, mo))
         u = _match_user_by_afm_or_name(row['afm'], row['epon'], row['onoma'])
-        if u: matched += 1
+        if u is None and kind == 'monthly':
+            u = _create_locked_employee(row); created += 1
+        if u is not None:
+            matched += 1
+            if _apply_epsilon_identity(u, row, comp):
+                pii_filled += 1
         key = '%s|%s|%s|%s|%s' % (comp.id if comp else 'x', yr, mo, kind, row['afm'] or (row['epon']+row['onoma']))
         h = hashlib.sha1(key.encode('utf-8')).hexdigest()[:40]
         rec = LegalNetImport.query.filter_by(import_hash=h).first()
@@ -569,23 +649,10 @@ def import_epsilon_bytes(raw, filename='', company_id=None):
         rec.gross_legal = row['gross']; rec.efka_employee_legal = row['efka_employee']
         rec.fmy_legal = row['fmy']; rec.net_legal = row['net']; rec.employer_cost_legal = row['employer_cost']
         rec.source_file = filename[:160]
-        # backfill PII (μόνο από κανονικές γραμμές)
-        if u and kind == 'monthly':
-            pii = EmployeePII.query.filter_by(user_id=u.id).first()
-            if not pii:
-                pii = EmployeePII(user_id=u.id); db.session.add(pii)
-            changed = False
-            for fld, val in [('afm',row['afm']),('amka',row['amka']),('ika_am',row['ika']),
-                             ('father_name',row['father']),('ergani_specialty',row['specialty']),
-                             ('employment_kind',row['kind']),('contract_type',row['contract']),
-                             ('bank_name',row['bank'])]:
-                if val and not getattr(pii, fld, None):
-                    setattr(pii, fld, str(val)[:120]); changed = True
-            if changed: pii_filled += 1
     db.session.commit()
     return {'added': added, 'updated': updated, 'matched': matched, 'rows': len(rows),
-            'pii_filled': pii_filled, 'extras': extras, 'company': comp.legal_name if comp else None,
-            'periods': sorted(period)}
+            'created': created, 'pii_filled': pii_filled, 'extras': extras,
+            'company': comp.legal_name if comp else None, 'periods': sorted(period)}
 
 
 # ── ΜΗΧΑΝΗ: build_run ─────────────────────────────────────────────────────────
