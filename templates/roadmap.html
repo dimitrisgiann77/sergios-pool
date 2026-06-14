@@ -1,0 +1,31 @@
+{% import '_monitoring.html' as mp %}
+<!DOCTYPE html><html lang="el"><head>{{ mp.head('Roadmap', theme.primary) }}
+<style>
+ .rm-legend{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;font-size:12px;}
+ .pill{padding:2px 9px;border-radius:11px;font-size:11px;font-weight:600;white-space:nowrap;}
+ .area{margin-bottom:18px;} .area h3{margin:0 0 10px;font-size:15px;color:var(--brand);display:flex;align-items:center;gap:8px;}
+ .rm-item{display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid #eef2f6;}
+ .rm-item .txt{flex:1;font-size:13.5px;}
+</style></head><body>
+{{ mp.topbar('map-2', 'ΕΣΤΙΑ — Roadmap', 'Πού βρισκόμαστε και πού πάμε') }}
+<div class="container">
+  <div class="card">
+    <div class="rm-legend">
+      {% for key,(label,bg,fg) in status.items() %}<span class="pill" style="background:{{ bg }};color:{{ fg }};">{{ label }}</span>{% endfor %}
+    </div>
+    <p style="font-size:12.5px;color:#64748b;margin-top:0;">Έχεις ιδέα ή βρήκες πρόβλημα; Στείλε μας <a href="/feedback?embed=1">feedback</a> — μας βοηθάει να προτεραιοποιήσουμε.</p>
+    {% for grp in roadmap %}
+    <div class="area">
+      <h3><i class="ti ti-folder"></i> {{ grp.area }}</h3>
+      {% for it in grp['items'] %}
+      {% set st = status[it.s] %}
+      <div class="rm-item">
+        <span class="pill" style="background:{{ st[1] }};color:{{ st[2] }};">{{ st[0] }}</span>
+        <span class="txt">{{ it.t }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% endfor %}
+    <p style="font-size:11px;color:#9aa7ad;text-align:right;">Έκδοση v{{ cur_version }} · build {{ cur_build }}</p>
+  </div>
+</div></body></html>

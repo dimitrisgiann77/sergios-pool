@@ -922,19 +922,27 @@ def schedule_export():
 def schedule_import():
     if not _auth() or not is_admin():
         return redirect(url_for('login'))
-    res = None
+    results = None
     if request.method == 'POST':
-        f = request.files.get('file')
-        if f:
+        files = request.files.getlist('files')
+        if not files:
+            f = request.files.get('file')
+            files = [f] if f else []
+        only_year = None if request.form.get('all_years') else request.form.get('year', type=int)
+        results = []
+        for f in files:
+            if not f or not f.filename:
+                continue
             try:
-                res = import_schedule_workbook(f.read(), only_year=request.form.get('year', type=int),
-                                               created_by=session.get('user_id'))
-                seed_schedule()
-                log_activity('schedule_import', str(res))
+                data = f.read()
+                kind, stats = import_any(data, f.filename, only_year=only_year, created_by=session.get('user_id'))
+                results.append({'name': f.filename, 'kind': kind, 'stats': stats})
             except Exception as e:
-                res = {'error': str(e)}
+                results.append({'name': f.filename, 'kind': 'error', 'stats': {'error': str(e)}})
+        seed_schedule()
+        log_activity('schedule_import_multi', f'{len(results)} αρχεία')
     purge_count = imported_staff_query().count()
-    return render_template('schedule_import.html', res=res, year=date.today().year, purge_count=purge_count)
+    return render_template('schedule_import.html', results=results, year=date.today().year, purge_count=purge_count)
 
 
 # ── ADMIN settings (κωδικοί / τμήματα / αργίες / πολιτική / κανόνες) ───────────
@@ -1187,3 +1195,185 @@ def schedule_staff_purge():
         db.session.commit()
     log_activity('schedule_staff_purge', f'{n} εργαζόμενοι')
     return redirect('/dashboard/schedule/import?embed=1&purged=' + str(n))
+
+
+# ── ΕΙΣΑΓΩΓΗ ΜΗΤΡΩΟΥ ΕΡΓΑΖΟΜΕΝΩΝ (payroll «Εργαζόμενοι» — καθαρή πηγή) ─────────
+REG_NAME_KEYS = {'ονοματεπωνυμο', 'επωνυμο'}
+def _parse_date_cell(v):
+    if v is None or v == '':
+        return None
+    if isinstance(v, datetime):
+        return v.date()
+    if isinstance(v, date):
+        return v
+    m = re.match(r'(\d{1,2})/(\d{1,2})/(\d{2,4})', str(v).strip())
+    if m:
+        y = int(m.group(3)); y = y + 2000 if y < 100 else y
+        try:
+            return date(y, int(m.group(2)), int(m.group(1)))
+        except Exception:
+            return None
+    return None
+
+def _to_float(v):
+    try:
+        return float(str(v).replace(',', '.'))
+    except Exception:
+        return None
+
+def _registry_header(ws, maxr=12):
+    """Βρες γραμμή-κεφαλίδα μητρώου: έχει τμημα + (επωνυμο|ονοματεπωνυμο) και ΟΧΙ ημερομηνίες."""
+    REG = {'id': ['id'], 'active': ['ενεργος', 'κατασταση'], 'dept': ['τμημα'],
+           'position': ['θεση', 'ειδικοτητα'], 'epon': ['επωνυμο'], 'onoma': ['ονομα'],
+           'fullname': ['ονοματεπωνυμο'], 'employer': ['εταιρεια'], 'upok': ['υποκ'],
+           'amount': ['συμφωνια', 'συμφωνημενοποσο'], 'days': ['ημερεσμηνα', 'ημερες'],
+           'hours': ['ωρεςμερα', 'ωρες'], 'hired': ['ημπροσληψης', 'ημερομηνιαπροσληψης'],
+           'left': ['ημαποχωρησης', 'ημερομηνιααποχωρησης'], 'email': ['email'], 'phone': ['τηλεφωνο']}
+    for r in range(1, min(maxr, ws.max_row) + 1):
+        cmap = {}; has_date = False
+        for c in range(1, min(ws.max_column, 30) + 1):
+            v = ws.cell(r, c).value
+            nv = _norm(v)
+            if isinstance(v, datetime) or (isinstance(v, str) and re.match(r'\d{1,2}/\d{1,2}/\d{4}', v.strip())):
+                has_date = True
+            for key, alts in REG.items():
+                if nv in alts and key not in cmap:
+                    cmap[key] = c
+        if not has_date and 'dept' in cmap and ('epon' in cmap or 'fullname' in cmap):
+            return r, cmap
+    return None, None
+
+def detect_kind(wb):
+    for ws in wb.worksheets:
+        # schedule = έχει ΤΜΗΜΑ + στήλες ημερομηνιών
+        for r in range(1, min(6, ws.max_row) + 1):
+            if _norm(ws.cell(r, 1).value) == 'τμημα':
+                for c in range(1, min(ws.max_column, 30) + 1):
+                    v = ws.cell(r, c).value
+                    if isinstance(v, datetime) or (isinstance(v, str) and re.match(r'\d{1,2}/\d{1,2}/\d{4}', str(v).strip())):
+                        return 'schedule'
+    for ws in wb.worksheets:
+        hr, _ = _registry_header(ws)
+        if hr:
+            return 'registry'
+    return 'unknown'
+
+def import_staff_registry(source, hotel_hint=None):
+    import openpyxl, io
+    wb = (openpyxl.load_workbook(io.BytesIO(source), data_only=True)
+          if isinstance(source, (bytes, bytearray)) else openpyxl.load_workbook(source, data_only=True))
+    hint_hotel = _resolve_hotel_by_code(hotel_hint) if hotel_hint else None
+    stats = {'users_new': 0, 'users_upd': 0, 'profiles': 0, 'inactive': 0, 'rows': 0}
+    # διάλεξε ΕΝΑ φύλλο μητρώου: προτίμησε «Εργαζόμενοι», αλλιώς το 1ο με header μητρώου
+    target = None
+    for ws in wb.worksheets:
+        if 'εργαζομεν' in _norm(ws.title):
+            if _registry_header(ws)[0]:
+                target = ws; break
+    if target is None:
+        for ws in wb.worksheets:
+            if _registry_header(ws)[0]:
+                target = ws; break
+    for ws in ([target] if target else []):
+        hr, cm = _registry_header(ws)
+        for r in range(hr + 1, ws.max_row + 1):
+            def g(k):
+                return ws.cell(r, cm[k]).value if cm.get(k) else None
+            if cm.get('fullname'):
+                full = str(g('fullname') or '').strip()
+            else:
+                full = (str(g('epon') or '').strip() + ' ' + str(g('onoma') or '').strip()).strip()
+            if not full or _norm(full) in ('', 'συνολο', 'ονοματεπωνυμο'):
+                continue
+            stats['rows'] += 1
+            dept = resolve_department(g('dept'))
+            upok = g('upok')
+            hotel = _resolve_hotel_by_code(upok) if upok else hint_hotel
+            # active
+            av = _norm(g('active'))
+            active = True
+            if av in ('οχι', 'ανενεργος', 'αποχωρησε', 'inactive', 'no'):
+                active = False
+            fn = _norm(full)
+            user = None
+            for u in User.query.all():
+                if _norm(u.full_name) == fn:
+                    user = u; break
+            if not user:
+                base = re.sub(r'[^a-z0-9.]', '', _acc(full).lower().replace(' ', '.')) or 'emp'
+                un = base; i = 1
+                while User.query.filter_by(username=un).first():
+                    i += 1; un = f'{base}.{i}'
+                user = User(username=un[:50], password=generate_password_hash(os.urandom(8).hex()),
+                            full_name=full[:100], role='staff', approved=True, is_active=True,
+                            login_enabled=False)
+                db.session.add(user); db.session.flush()
+                stats['users_new'] += 1
+            else:
+                stats['users_upd'] += 1
+            if dept and not user.department_id:
+                user.department_id = dept.id
+            if hotel and not user.home_hotel_id:
+                user.home_hotel_id = hotel.id
+            if g('employer') and not user.employer:
+                user.employer = str(g('employer'))[:120]
+            if upok and not user.subunit:
+                user.subunit = str(upok)[:20]
+            if user.login_enabled is None:
+                user.login_enabled = False
+            user.employment_active = active
+            if not active:
+                stats['inactive'] += 1
+            # EmploymentProfile
+            prof = EmploymentProfile.query.filter_by(user_id=user.id).first()
+            amount = _to_float(g('amount'))
+            if amount or g('position') or g('hired'):
+                if not prof:
+                    prof = EmploymentProfile(user_id=user.id); db.session.add(prof); stats['profiles'] += 1
+                if amount:
+                    prof.agreement_amount = amount
+                dd = _to_float(g('days'));  hh = _to_float(g('hours'))
+                if dd:
+                    prof.days_per_month = int(dd)
+                if hh:
+                    prof.hours_per_day = hh
+                if g('position'):
+                    prof.position = str(g('position'))[:80]
+                if g('hired'):
+                    prof.hired_at = _parse_date_cell(g('hired'))
+                if g('left'):
+                    prof.left_at = _parse_date_cell(g('left'))
+                prof.status = 'Ενεργός' if active else 'Ανενεργός'
+        db.session.commit()
+    wb.close()
+    return stats
+
+def import_any(source, filename='', only_year=None, created_by=None):
+    """Auto-detect: εισάγει ΚΑΙ μητρώο ΚΑΙ πρόγραμμα αν υπάρχουν στο ίδιο αρχείο."""
+    import openpyxl, io
+    wb = openpyxl.load_workbook(io.BytesIO(source) if isinstance(source, (bytes, bytearray)) else source, data_only=True)
+    has_reg = any(_registry_header(ws)[0] for ws in wb.worksheets)
+    has_sch = False
+    for ws in wb.worksheets:
+        for r in range(1, min(6, ws.max_row) + 1):
+            if _norm(ws.cell(r, 1).value) == 'τμημα':
+                for c in range(1, min(ws.max_column, 30) + 1):
+                    v = ws.cell(r, c).value
+                    if isinstance(v, datetime) or (isinstance(v, str) and re.match(r'\d{1,2}/\d{1,2}/\d{4}', str(v).strip())):
+                        has_sch = True; break
+            if has_sch:
+                break
+        if has_sch:
+            break
+    wb.close()
+    code = None
+    m = re.match(r'^\s*([A-Za-zΑ-Ωα-ω]{2,4})\b', filename or '')
+    if m:
+        code = m.group(1).upper()
+    out = {'registry': None, 'schedule': None}
+    if has_reg:
+        out['registry'] = import_staff_registry(source, hotel_hint=code)
+    if has_sch:
+        out['schedule'] = import_schedule_workbook(source, only_year=only_year, created_by=created_by)
+    kind = '+'.join([k for k in ('registry', 'schedule') if out[k] is not None]) or 'unknown'
+    return kind, out

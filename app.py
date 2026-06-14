@@ -314,11 +314,15 @@ def inject_theme():
     return {'theme': get_theme()}
 
 # έκδοση/build για το footer του shell
-APP_VERSION = '12.44'
-APP_BUILD   = '324'
+APP_VERSION = '12.45'
+APP_BUILD   = '325'
 
 # ── v12.36 — Ιστορικό εκδόσεων («Τι νέο»). Newest first. ──────────────────────
 CHANGELOG = [
+    {'v': '12.45', 'b': '325', 'date': '14/06/2026', 'time': '14:25', 'title': 'Roadmap · Multi-file importer ιστορικών',
+     'items': ['Νέα σελίδα «Roadmap»: όλη η πορεία της Εστίας ανά τομέα (ολοκληρωμένα/σε εξέλιξη/σχεδιασμένα).',
+               'Εισαγωγή πολλών αρχείων μαζί, με αυτόματη αναγνώριση: πρόγραμμα εργασίας ή μητρώο μισθοδοσίας.',
+               'Νέα πηγή «Μητρώο Εργαζομένων» (καθαρή): τμήμα/εταιρεία/πρόσληψη/αποχώρηση + προφίλ· υποστήριξη παλιών ετών.']},
     {'v': '12.44', 'b': '324', 'date': '14/06/2026', 'time': '13:40', 'title': 'Τι νέο με ώρα · καθαρή διαχείριση εισαγμένου προσωπικού',
      'items': ['Το «Τι νέο» δείχνει πλέον ώρα μαζί με την ημερομηνία.',
                'Το εισαγμένο προσωπικό (χωρίς σύνδεση) δεν εμφανίζεται στη σελίδα «Χρήστες» — μένει καθαρή για τους πραγματικούς λογαριασμούς.',
@@ -2136,6 +2140,48 @@ def whatsnew():
     if 'user_id' not in session:
         return redirect(url_for('login'))
     return render_template('whatsnew.html', changelog=CHANGELOG,
+                           cur_version=APP_VERSION, cur_build=APP_BUILD)
+
+# ── v12.45 — ROADMAP ολόκληρης της Εστίας (status: done/progress/planned/idea) ──
+ROADMAP = [
+    {'area': 'Συντήρηση', 'items': [
+        {'t': 'Module Βλάβες (workflow, SLA, αυτόματη ανάθεση, ιστορικό)', 's': 'done'},
+        {'t': 'Πισίνες & Νερά Χρήσης — μετρήσεις, όρια, ενέργειες', 's': 'done'},
+        {'t': 'Μητρώο Εξοπλισμού (assets, κόστος, QR) — δένει με Βλάβες', 's': 'planned'},
+        {'t': 'Προληπτική συντήρηση / προγραμματισμένες εργασίες', 's': 'idea'},
+    ]},
+    {'area': 'Προσωπικό / HR', 'items': [
+        {'t': 'Πρόγραμμα Εργασίας — βάρδιες, κανόνες, υποβολή λογιστηρίου', 's': 'done'},
+        {'t': 'Οργανόγραμμα (εργαζόμενοι σε τμήματα) + εκκαθάριση διπλών', 's': 'done'},
+        {'t': 'Multi-file importer ιστορικών (παλιά έτη/προσωπικό)', 's': 'progress'},
+        {'t': 'Πληρωτέο συμφωνίας + προφίλ μισθοδοσίας (τράπεζα/φάκελος)', 's': 'planned'},
+        {'t': 'Αξιολόγηση προσωπικού (πάνω στα ερωτηματολόγια)', 's': 'planned'},
+    ]},
+    {'area': 'Guest experience / Υποδοχή', 'items': [
+        {'t': 'Ερωτηματολόγια (builder, δημόσιος σύνδεσμος, NPS)', 's': 'done'},
+        {'t': 'Logbook (Παράπονα/Συμβάντα) — 1.762 ιστορικά', 's': 'progress'},
+        {'t': 'Guest App (αιτήματα δωματίου)', 's': 'idea'},
+    ]},
+    {'area': 'Πλατφόρμα', 'items': [
+        {'t': 'Ρόλοι/δικαιώματα, μενού ανά ρόλο, multi-hotel scope', 's': 'done'},
+        {'t': 'Dashboard με widgets, dark mode, παλέτες', 's': 'done'},
+        {'t': 'Backups → SharePoint, Κέντρο Εισαγωγής, Feedback χρηστών', 's': 'done'},
+        {'t': 'Μεταφράσεις EN/UK', 's': 'planned'},
+        {'t': 'Σύνδεση μισθοδοσίας με ΕΡΓΑΝΗ/Epsilon (μέσω προγράμματος)', 's': 'idea'},
+    ]},
+]
+ROADMAP_STATUS = {
+    'done':     ('✓ Ολοκληρώθηκε', '#dcfce7', '#166534'),
+    'progress': ('● Σε εξέλιξη',    '#dbeafe', '#185FA5'),
+    'planned':  ('◷ Σχεδιασμένο',   '#fef3c7', '#92400e'),
+    'idea':     ('💡 Ιδέα',         '#f1f5f9', '#64748b'),
+}
+
+@app.route('/dashboard/roadmap')
+def roadmap_page():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    return render_template('roadmap.html', roadmap=ROADMAP, status=ROADMAP_STATUS,
                            cur_version=APP_VERSION, cur_build=APP_BUILD)
 
 # ── Inbox/διαχείριση βλαβών: μεταφέρθηκε στο faults.py (Module Βλαβοληψία v12.14) ──
