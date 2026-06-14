@@ -1011,9 +1011,143 @@ def schedule_staff():
     if f_dept:
         q = q.filter(User.department_id == f_dept)
     users = q.order_by(User.full_name).limit(800).all()
+    dup_groups = find_dup_groups()
     return render_template('schedule_staff.html',
         users=users, depts=Department.query.order_by(Department.sort).all(),
         hotels=Hotel.query.filter_by(is_active=True).order_by(Hotel.name).all(),
-        f_hotel=f_hotel, f_dept=f_dept,
+        f_hotel=f_hotel, f_dept=f_dept, dup_groups=dup_groups,
         dept_map={d.id: d.name for d in Department.query.all()},
         hotel_map={h.id: h.name for h in Hotel.query.all()})
+
+
+# ── ΕΚΚΑΘΑΡΙΣΗ / ΣΥΓΧΩΝΕΥΣΗ ΔΙΠΛΩΝ ΕΡΓΑΖΟΜΕΝΩΝ ──────────────────────────────
+def _lev(a, b):
+    if a == b:
+        return 0
+    if not a:
+        return len(b)
+    if not b:
+        return len(a)
+    prev = list(range(len(b) + 1))
+    for i, ca in enumerate(a, 1):
+        cur = [i]
+        for j, cb in enumerate(b, 1):
+            cur.append(min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (ca != cb)))
+        prev = cur
+    return prev[-1]
+
+def _name_parts(full):
+    toks = _acc(full or '').lower().split()
+    sur = toks[0] if toks else ''
+    first = ' '.join(toks[1:]) if len(toks) > 1 else ''
+    return _norm(sur), _norm(first)
+
+def _likely_dup(u1, u2):
+    s1, f1 = _name_parts(u1.full_name)
+    s2, f2 = _name_parts(u2.full_name)
+    if not s1 or s1 != s2:
+        return False                       # διαφορετικό επώνυμο -> όχι
+    if f1 == f2:
+        return True                        # ίδιο πλήρες όνομα
+    if not f1 or not f2:
+        return True                        # ο ένας χωρίς μικρό (π.χ. "FARO" vs "FARO ANNA")
+    if f1.startswith(f2) or f2.startswith(f1):
+        return True
+    if _lev(f1, f2) <= 2 and min(len(f1), len(f2)) >= 3:
+        return True                        # JOEY vs JOY, typos
+    return False
+
+def find_dup_groups():
+    users = User.query.filter(User.is_active == True).order_by(User.full_name).all()
+    parent = {u.id: u.id for u in users}
+    def find(x):
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]; x = parent[x]
+        return x
+    def union(a, b):
+        ra, rb = find(a), find(b)
+        if ra != rb:
+            parent[rb] = ra
+    by_sur = {}
+    for u in users:
+        s, _ = _name_parts(u.full_name)
+        by_sur.setdefault(s, []).append(u)
+    for s, lst in by_sur.items():
+        if not s or len(lst) < 2:
+            continue
+        for i in range(len(lst)):
+            for j in range(i + 1, len(lst)):
+                if _likely_dup(lst[i], lst[j]):
+                    union(lst[i].id, lst[j].id)
+    groups = {}
+    umap = {u.id: u for u in users}
+    for u in users:
+        groups.setdefault(find(u.id), []).append(u)
+    out = []
+    for gid, members in groups.items():
+        if len(members) > 1:
+            # εμπλουτισμός: πλήθος αναθέσεων ανά μέλος (για επιλογή canonical)
+            for m in members:
+                m._assign_n = ShiftAssignment.query.filter_by(user_id=m.id).count()
+            members.sort(key=lambda m: m._assign_n, reverse=True)
+            out.append(members)
+    out.sort(key=lambda g: g[0].full_name or '')
+    return out
+
+def merge_users(keep_id, drop_ids):
+    keep = User.query.get(keep_id)
+    if not keep:
+        return 0
+    moved = 0
+    keep_dates = {a.work_date for a in ShiftAssignment.query.filter_by(user_id=keep_id).all()}
+    # home_hotel heuristic: όπου έχει τις περισσότερες αναθέσεις συνολικά
+    hotel_count = {}
+    for d in drop_ids:
+        u = User.query.get(d)
+        if not u or u.id == keep_id:
+            continue
+        # μέτρα αναθέσεις ανά work_hotel
+        for a in ShiftAssignment.query.filter_by(user_id=d).all():
+            if a.work_date in keep_dates:
+                db.session.delete(a)               # διπλή μέρα -> κράτα του keep
+            else:
+                a.user_id = keep_id; keep_dates.add(a.work_date); moved += 1
+                if a.work_hotel_id:
+                    hotel_count[a.work_hotel_id] = hotel_count.get(a.work_hotel_id, 0) + 1
+        # EmploymentProfile: μετάφερε αν λείπει στον keep
+        kp = EmploymentProfile.query.filter_by(user_id=keep_id).first()
+        dp = EmploymentProfile.query.filter_by(user_id=d).first()
+        if dp and not kp:
+            dp.user_id = keep_id
+        elif dp:
+            db.session.delete(dp)
+        # specialties (faults)
+        try:
+            import faults as _flt
+            for us in _flt.UserSpecialty.query.filter_by(user_id=d).all():
+                db.session.delete(us)
+        except Exception:
+            pass
+        # fill blanks στον keep
+        if not keep.department_id and u.department_id:
+            keep.department_id = u.department_id
+        if not keep.home_hotel_id and u.home_hotel_id:
+            keep.home_hotel_id = u.home_hotel_id
+        if not keep.employer and u.employer:
+            keep.employer = u.employer
+        if not keep.subunit and u.subunit:
+            keep.subunit = u.subunit
+        db.session.delete(u)
+    db.session.commit()
+    return moved
+
+@app.route('/dashboard/schedule/staff/merge', methods=['POST'])
+def schedule_staff_merge():
+    if not _auth() or not is_admin():
+        return redirect(url_for('login'))
+    keep_id = request.form.get('keep_id', type=int)
+    drop_ids = [int(x) for x in request.form.getlist('drop_ids') if x.isdigit() and int(x) != keep_id]
+    if keep_id and drop_ids:
+        n = merge_users(keep_id, drop_ids)
+        log_activity('staff_merge', f'keep={keep_id} drop={drop_ids} moved={n}')
+    return redirect('/dashboard/schedule/staff?embed=1&ok=merged')

@@ -29,6 +29,34 @@
     <p style="font-size:12px;color:#64748b;margin:6px 0 0;">Για μαζική εισαγωγή χρησιμοποίησε <a href="/dashboard/schedule/import?embed=1">Πρόγραμμα · Εισαγωγή</a> (από τα Excel).</p>
   </div>
 
+  {% if request.args.get('ok')=='merged' %}<div class="banner" style="background:#dcfce7;color:#166534;padding:9px 12px;border-radius:9px;margin-bottom:12px;"><i class="ti ti-check"></i> Οι εγγραφές συγχωνεύτηκαν.</div>{% endif %}
+
+  {% if dup_groups %}
+  <div class="card" style="border:1px solid #fde68a;background:#fffbeb;margin-bottom:14px;">
+    <h3 style="margin:0 0 8px;font-size:15px;color:#92400e;"><i class="ti ti-copy"></i> Πιθανές διπλοεγγραφές ({{ dup_groups|length }})</h3>
+    <p style="font-size:12px;color:#92400e;margin:0 0 10px;">Διάλεξε ποιον <b>κρατάς</b> (●) σε κάθε ομάδα· οι υπόλοιποι συγχωνεύονται σε αυτόν (οι βάρδιες μεταφέρονται, τα κενά στοιχεία συμπληρώνονται). Έλεγξε καλά πριν.</p>
+    {% for g in dup_groups %}
+    <form method="POST" action="/dashboard/schedule/staff/merge" style="border-top:1px solid #fde68a;padding:8px 0;"
+          onsubmit="return confirm('Συγχώνευση {{ g|length-1 }} εγγραφών στον επιλεγμένο;');">
+      <table style="width:100%;border:none;"><tbody>
+      {% for m in g %}
+        <tr style="border:none;">
+          <td style="border:none;width:24px;"><input type="radio" name="keep_id" value="{{ m.id }}" {{ 'checked' if loop.first }} style="width:auto;"></td>
+          <td style="border:none;"><b>{{ m.full_name }}</b> <small style="color:#94a3b8;">{{ m.username }}</small></td>
+          <td style="border:none;font-size:12px;color:#64748b;">{{ dept_map.get(m.department_id,'—') }} · {{ hotel_map.get(m.home_hotel_id,'—') }}</td>
+          <td style="border:none;font-size:12px;">{{ m._assign_n }} βάρδιες</td>
+          <td style="border:none;"><label style="font-size:11px;color:#b45309;"><input type="checkbox" name="drop_ids" value="{{ m.id }}" {{ '' if loop.first else 'checked' }} style="width:auto;"> συγχώνευση</label></td>
+        </tr>
+      {% endfor %}
+      </tbody></table>
+      <div style="text-align:right;"><button class="b" type="submit"><i class="ti ti-arrows-join"></i> Συγχώνευση ομάδας</button></div>
+    </form>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="banner" style="background:#dcfce7;color:#166534;padding:9px 12px;border-radius:9px;margin-bottom:12px;"><i class="ti ti-check"></i> Δεν εντοπίστηκαν πιθανά διπλά.</div>
+  {% endif %}
+
   <div class="card">
     <form class="bar" method="GET" action="/dashboard/schedule/staff">
       <input type="hidden" name="embed" value="1">

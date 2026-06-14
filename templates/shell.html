@@ -286,7 +286,7 @@ html[data-theme="dark"] .nm-foot{border-top-color:#243140;}
 
       <div class="grp" data-ws="operations admin">Προσωπικό</div>
       <div class="item" data-ws="operations admin" data-url="/dashboard/schedule?embed=1"><i class="ti ti-calendar-week"></i> Πρόγραμμα Εργασίας</div>
-      <div class="item" data-ws="operations admin" data-url="/dashboard/schedule/submissions?embed=1"><i class="ti ti-send"></i> Υποβολές (Λογιστήριο)</div>
+      {% if is_admin %}<div class="item" data-ws="operations admin" data-url="/dashboard/schedule/submissions?embed=1"><i class="ti ti-send"></i> Υποβολές (Λογιστήριο)</div>{% endif %}
       {% endif %}
       <div class="grp" data-ws="operations admin">Γενικά</div>
       <div class="item" data-ws="operations admin" data-url="/profile?embed=1"><i class="ti ti-user"></i> Το προφίλ μου</div>
